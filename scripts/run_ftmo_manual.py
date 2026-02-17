@@ -27,19 +27,19 @@ except ImportError:
 
 # Import ML Model
 try:
-    from src.ml.stop_hunt_model import StopHuntModel
+    from src.nanobot.ml_model import StopHuntModel
     ML_ENABLED = True
 except ImportError:
     ML_ENABLED = False
     print("⚠️ ML Module not found. Running in Technical Mode only.")
 
-# Import Bayesian Engine
+# Import Bayesian Engine (Now in kelly_sizing)
 try:
-    from src.probability.bayesian_belief import BayesianBeliefEngine
+    from src.nanobot.kelly_sizing import BayesianEnsemble as BayesianBeliefEngine
     BAYES_ENABLED = True
 except ImportError:
     BAYES_ENABLED = False
-    print("⚠️ Bayesian Module not found. Disabling convicton-based sizing.")
+    print("⚠️ Bayesian Module not found. Disabling conviction-based sizing.")
 
 import argparse
 
@@ -507,33 +507,53 @@ def manage_active_trades(bot_brain):
         else:
             atr = 0.002 # Fallback
             
-        # 🟢 BREAK EVEN Logic: If price reaches 1.5 ATR profit
-        if p.type == 0: # Buy (mt5.ORDER_TYPE_BUY)
-            if p.price_current > (p.price_open + 1.5 * atr):
-                if p.sl < p.price_open: # Not yet at BE
-                    print(f"🛡️ GUARDIAN BE: Moving {symbol} to Break Even.")
-                    new_sl = p.price_open + (20 * info.point) # +2 pips buffer
-                    request = {
-                        "action": mt5_client.TRADE_ACTION_SLTP,
-                        "symbol": symbol,
-                        "sl": float(new_sl),
-                        "tp": float(p.tp),
-                        "position": p.ticket
-                    }
-                    mt5_client.order_send(request)
-        else: # Sell (mt5.ORDER_TYPE_SELL)
-            if p.price_current < (p.price_open - 1.5 * atr):
-                if p.sl > p.price_open or p.sl == 0:
-                    print(f"🛡️ GUARDIAN BE: Moving {symbol} to Break Even.")
-                    new_sl = p.price_open - (20 * info.point)
-                    request = {
-                        "action": mt5_client.TRADE_ACTION_SLTP,
-                        "symbol": symbol,
-                        "sl": float(new_sl),
-                        "tp": float(p.tp),
-                        "position": p.ticket
-                    }
-                    mt5_client.order_send(request)
+        # 🎯 DANIEL'S PARTIAL EXIT (1.3R): 50% Close + Move to BE
+        # 🟢 BUY Logic
+        entry_p = p.price_open
+        sl_p = p.sl
+        risk_pips = abs(entry_p - sl_p) / info.point if sl_p > 0 else 0
+        current_pips = (p.price_current - entry_p) / info.point
+        r_multiple = current_pips / (risk_pips + 0.00001) if p.type == 0 else (-current_pips / (risk_pips + 0.00001))
+        
+        # Check if already partialled (Using comment or local state? Using comment "PARTIAL" is safer)
+        is_partialed = "PARTIAL" in p.comment or p.volume < (p.volume_initial if hasattr(p, 'volume_initial') else p.volume)
+
+        if not is_partialed and r_multiple >= 1.3:
+            print(f"🎯 PARTIAL 1.3R REACHED: Closing 50% of {symbol} (#{p.ticket}).")
+            partial_vol = round(p.volume / 2.0, 2)
+            if partial_vol < info.volume_min: partial_vol = p.volume # Close all if too small
+            
+            # Close 50%
+            tick = mt5_client.symbol_info_tick(symbol)
+            close_request = {
+                "action": mt5_client.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": float(partial_vol),
+                "type": mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY,
+                "position": p.ticket,
+                "price": tick.bid if p.type == 0 else tick.ask,
+                "comment": "PARTIAL 1.3R",
+                "type_filling": mt5_client.ORDER_FILLING_IOC,
+            }
+            mt5_client.order_send(close_request)
+            
+            # Move to BE
+            new_sl = entry_p + (20 * info.point) if p.type == 0 else entry_p - (20 * info.point)
+            sl_request = {
+                "action": mt5_client.TRADE_ACTION_SLTP,
+                "symbol": symbol,
+                "sl": float(new_sl),
+                "tp": float(p.tp),
+                "position": p.ticket
+            }
+            mt5_client.order_send(sl_request)
+            
+            # --- Telegram Notification ---
+            try:
+                bot = TelegramBot()
+                if bot.enabled:
+                    bot.send_message(f"🎯 *PARTIAL EXIT HIT*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% @ 1.3R + SL moved to BE_")
+            except: pass
         
         # Gather data for AI Audit
         active_summary.append({
@@ -625,7 +645,7 @@ def main():
     kelly_engine = None
     account_peak = 0.0
     if BAYES_ENABLED:
-        from src.probability.kelly_sizing import KellyBeliefEngine
+        from src.nanobot.kelly_sizing import KellyBeliefEngine
         kelly_engine = KellyBeliefEngine(fraction=0.25)
         
         # Initial Balance to start peak tracking

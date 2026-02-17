@@ -1,48 +1,10 @@
-# ==========================================
-# NANOBOT TRADING AGENT - SECURITY FIRST
-# ==========================================
-
-# === CREDENCIALES Y SECRETOS (CRÍTICO) ===
-config/credentials.json
-.env
-*.key
-*.pem
-*.p12
-API_KEYS.txt
-secrets/
-.credentials/
-
-# === LOGS Y DATOS OPERACIONALES ===
-logs/
-*.log
-operations.json
-operations.jsonl
-*.log.*
-
-# === MODELOS ENTRENADOS (Pesados - Regenerar localmente) ===
-models/*.joblib
-models/*.pkl
-models/*.h5
-models/*.pt
-models/*.pth
-*.model
-*.weights
-
-# === DATOS DE TRADING ===
-data/historical/
-data/backtest_results/
-*.csv
-*.parquet
-database.db
-*.sqlite
-*.sqlite3
-
-# === PYTHON ===
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -58,48 +20,24 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# === ENTORNOS VIRTUALES ===
-venv/
+# Virtual Environment
 .venv/
+venv/
 ENV/
-env/
-.env/
 
-# === IDEs ===
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# === JUPYTER ===
-.ipynb_checkpoints/
-*.ipynb
-
-# === TESTING ===
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# === TEMPORALES ===
-tmp/
+# Data and Logs
+logs/*.log
+logs/*.json
+data/trades_backup.json
 temp/
-*.tmp
-*.bak
-*.backup
+tmp/
 
-# === MT5 y TRADING ===
-*.log
-MQL5/
-Experts/Advisors/
+# Models (Archived ones)
+archive/models/
 
-# === ESPECÍFICO DEL PROYECTO ===
-# Mantener solo ejemplos/templates
-!config/credentials.example.json
-!.env.example
-!models/.gitkeep
-!data/.gitkeep
+# OS
+.DS_Store
+.env
+.ipynb_checkpoints
+logs/

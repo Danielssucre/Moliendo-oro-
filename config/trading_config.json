@@ -97,7 +97,7 @@
             },
             "risk_management": {
                 "min_risk_reward_ratio": 1.8,
-                "risk_per_trade": 0.5
+                "risk_per_trade": 0.15
             },
             "probability": {
                 "min_monte_carlo_prob": 0.40
@@ -119,7 +119,7 @@
             },
             "risk_management": {
                 "min_risk_reward_ratio": 1.1,
-                "risk_per_trade": 0.5
+                "risk_per_trade": 0.15
             },
             "probability": {
                 "min_monte_carlo_prob": 0.55
@@ -244,9 +244,9 @@
         "long": "4h"
     },
     "risk_management": {
-        "max_risk_per_trade_percent": 1.5,
+        "max_risk_per_trade_percent": 0.5,
         "default_capital": 10000,
-        "risk_per_trade": 0.5,
+        "risk_per_trade": 0.15,
         "min_risk_reward_ratio": 2.0,
         "atr_multiplier_stop_loss": 1.5,
         "tp_levels": 3
