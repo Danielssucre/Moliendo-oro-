@@ -1,0 +1,332 @@
+{
+    "active_profile": "scalper_m15",
+    "profiles": {
+        "sniper_golden": {
+            "name": "Sniper Golden (Optimizado)",
+            "timeframes": {
+                "short": "H1",
+                "medium": "H4",
+                "long": "D1"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 2.0
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.3
+            },
+            "indicators": {
+                "adx_threshold": 15,
+                "sr_max_distance_pips": 50
+            },
+            "signal": {
+                "validity_hours": 4
+            }
+        },
+        "scalper_m15": {
+            "name": "Scalper M15 (Calibrado)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 2.0
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.40
+            },
+            "indicators": {
+                "adx_threshold": 25,
+                "sr_max_distance_pips": 15
+            },
+            "signal": {
+                "validity_hours": 1
+            }
+        },
+        "asia_scalper": {
+            "name": "Tokyo Daybreak (USDJPY Asia)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.2,
+                "atr_multiplier_stop_loss": 1.2
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.35,
+                "min_threshold": 0.45
+            },
+            "indicators": {
+                "adx_threshold": 12,
+                "sr_max_distance_pips": 20
+            },
+            "signal": {
+                "validity_hours": 2
+            }
+        },
+        "prop_challenge": {
+            "name": "Prop Challenge (Pass Mode)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.5,
+                "risk_per_trade": 1.0
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.35
+            },
+            "indicators": {
+                "adx_threshold": 20,
+                "sr_max_distance_pips": 15
+            },
+            "signal": {
+                "validity_hours": 2
+            }
+        },
+        "prop_funded": {
+            "name": "Prop Funded (Benefit Mode)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.8,
+                "risk_per_trade": 0.5
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.40
+            },
+            "indicators": {
+                "adx_threshold": 25,
+                "sr_max_distance_pips": 10
+            },
+            "signal": {
+                "validity_hours": 2
+            }
+        },
+        "prop_scalper": {
+            "name": "Prop Scalper (Dopamina Mode)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.1,
+                "risk_per_trade": 0.5
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.55
+            },
+            "indicators": {
+                "adx_threshold": 15,
+                "sr_max_distance_pips": 20
+            },
+            "signal": {
+                "validity_hours": 1
+            }
+        },
+        "research_agresivo": {
+            "name": "Research Aggressive (High Frequency)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.1,
+                "risk_per_trade": 1.0,
+                "atr_multiplier_stop_loss": 1.0
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.25,
+                "min_threshold": 0.45
+            },
+            "indicators": {
+                "adx_threshold": 10,
+                "sr_max_distance_pips": 30
+            },
+            "signal": {
+                "validity_hours": 2,
+                "ignore_d1_alignment": true
+            }
+        },
+        "prop_hunter": {
+            "name": "Prop Hunter (Challenge Mode)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 1.5,
+                "risk_per_trade": 0.5
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.40,
+                "min_threshold": 0.55
+            },
+            "indicators": {
+                "adx_threshold": 20,
+                "sr_max_distance_pips": 15
+            },
+            "signal": {
+                "validity_hours": 2,
+                "ignore_d1_alignment": true
+            }
+        },
+        "tree_evolution": {
+            "name": "Evolutionary Decision Tree",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 2.0,
+                "risk_per_trade": 0.5,
+                "atr_multiplier_stop_loss": 1.5
+            },
+            "probability": {
+                "min_monte_carlo_prob": 0.30,
+                "min_threshold": 0.60
+            },
+            "indicators": {
+                "adx_threshold": 20,
+                "rsi_overbought": 70,
+                "rsi_oversold": 30,
+                "sr_max_distance_pips": 20
+            },
+            "signal": {
+                "validity_hours": 2,
+                "ignore_d1_alignment": true
+            }
+        },
+        "hive_v5_optimized": {
+            "name": "HIVE V5 (FTMO Optimized 60d)",
+            "timeframes": {
+                "short": "15min",
+                "medium": "1h",
+                "long": "4h"
+            },
+            "risk_management": {
+                "min_risk_reward_ratio": 3.1,
+                "atr_multiplier_stop_loss": 1.3
+            },
+            "indicators": {
+                "ema_fast": 11,
+                "ema_slow": 42,
+                "ema_trend": 250
+            }
+        }
+    },
+    "pairs": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "USDCAD",
+        "NZDUSD",
+        "EURGBP",
+        "EURJPY",
+        "GBPJPY",
+        "AUDJPY"
+    ],
+    "timeframes": {
+        "short": "15min",
+        "medium": "1h",
+        "long": "4h"
+    },
+    "risk_management": {
+        "max_risk_per_trade_percent": 1.5,
+        "default_capital": 10000,
+        "risk_per_trade": 0.5,
+        "min_risk_reward_ratio": 2.0,
+        "atr_multiplier_stop_loss": 1.5,
+        "tp_levels": 3
+    },
+    "probability": {
+        "min_threshold": 0.58,
+        "min_monte_carlo_prob": 0.35,
+        "weights": {
+            "trend_confidence": 0.4,
+            "indicator_confirmation": 0.3,
+            "volatility_favorability": 0.2,
+            "market_sentiment": 0.1
+        },
+        "min_indicator_confirmations": 3
+    },
+    "signal": {
+        "validity_hours": 1,
+        "confidence_levels": {
+            "high": 0.7,
+            "medium": 0.6,
+            "low": 0.5
+        }
+    },
+    "indicators": {
+        "ema_periods": [
+            12,
+            26,
+            50
+        ],
+        "rsi_period": 14,
+        "rsi_overbought": 85,
+        "rsi_oversold": 15,
+        "atr_period": 14,
+        "adx_period": 14,
+        "adx_threshold": 20,
+        "sr_max_distance_pips": 15,
+        "macd_fast": 12,
+        "macd_slow": 26,
+        "macd_signal": 9,
+        "ema_fast": 12,
+        "ema_medium": 26,
+        "ema_slow": 50,
+        "kalman_q": 0.001,
+        "kalman_r": 0.1
+    },
+    "ml": {
+        "stop_hunt_risk_threshold": 0.65
+    },
+    "data": {
+        "historical_days": 180,
+        "cache_duration_minutes": 15,
+        "min_candles_required": 200
+    },
+    "api": {
+        "primary_provider": "twelvedata",
+        "fallback_providers": [
+            "alpha_vantage"
+        ],
+        "retry_attempts": 3,
+        "timeout_seconds": 30
+    },
+    "budget_management": {
+        "daily_limit": 800,
+        "peak_hours": [
+            6,
+            7,
+            19,
+            20
+        ],
+        "dead_hours": [
+            0,
+            1,
+            2,
+            13,
+            17
+        ],
+        "intervals": {
+            "peak": 15,
+            "normal": 60,
+            "dead": 120
+        }
+    }
+}

@@ -1,0 +1,13 @@
+name: trading_incubator
+description: Runs trading strategy backtests based on a hypothesis config.
+tools:
+  - name: run_incubation_test
+    description: Executes a single backtest with specific parameters to test a strategy hypothesis.
+    parameters:
+      type: object
+      properties:
+        config_json:
+          type: string
+          description: A JSON string with the OptimizerConfig parameters (hurst_trending, mc_threshold, etc.)
+      required:
+        - config_json

@@ -1,0 +1,94 @@
+{
+    "best_params": {
+        "ema_fast": 11,
+        "ema_slow": 42,
+        "ema_trend": 250,
+        "atr_mult": 1.3,
+        "rr_ratio": 3.1
+    },
+    "best_score": -24.499999999999943,
+    "timestamp": "2026-02-12T21:40:00.130387",
+    "iterations": 200,
+    "top_configs": [
+        {
+            "params": {
+                "ema_fast": 11,
+                "ema_slow": 42,
+                "ema_trend": 250,
+                "atr_mult": 1.3,
+                "rr_ratio": 3.1
+            },
+            "results": {
+                "pnl": -24.499999999999943,
+                "trades": 496,
+                "wr": 23.18548387096774,
+                "pf": 0.9356955380577427
+            },
+            "score": -24.499999999999943
+        },
+        {
+            "params": {
+                "ema_fast": 17,
+                "ema_slow": 43,
+                "ema_trend": 250,
+                "atr_mult": 1.6,
+                "rr_ratio": 2.1
+            },
+            "results": {
+                "pnl": -30.99999999999993,
+                "trades": 496,
+                "wr": 30.241935483870968,
+                "pf": 0.9104046242774566
+            },
+            "score": -30.99999999999993
+        },
+        {
+            "params": {
+                "ema_fast": 11,
+                "ema_slow": 45,
+                "ema_trend": 250,
+                "atr_mult": 1.4,
+                "rr_ratio": 2.5
+            },
+            "results": {
+                "pnl": -34.0,
+                "trades": 496,
+                "wr": 26.61290322580645,
+                "pf": 0.9065934065934066
+            },
+            "score": -34.0
+        },
+        {
+            "params": {
+                "ema_fast": 15,
+                "ema_slow": 42,
+                "ema_trend": 250,
+                "atr_mult": 1.6,
+                "rr_ratio": 1.8
+            },
+            "results": {
+                "pnl": -36.80000000000011,
+                "trades": 496,
+                "wr": 33.064516129032256,
+                "pf": 0.8891566265060241
+            },
+            "score": -36.80000000000011
+        },
+        {
+            "params": {
+                "ema_fast": 17,
+                "ema_slow": 46,
+                "ema_trend": 250,
+                "atr_mult": 2.3,
+                "rr_ratio": 1.7
+            },
+            "results": {
+                "pnl": -39.69999999999992,
+                "trades": 496,
+                "wr": 34.07258064516129,
+                "pf": 0.8785932721712538
+            },
+            "score": -39.69999999999992
+        }
+    ]
+}

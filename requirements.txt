@@ -1,0 +1,43 @@
+# Core dependencies
+requests>=2.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# API clients
+alpha-vantage>=2.3.1
+twelvedata>=1.2.8
+
+# Data handling
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# Caching
+diskcache>=5.6.3
+
+# Logging
+colorlog>=6.7.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0
+# AI Brain
+google-generativeai>=0.3.0
+
+# MCP Integration (optional - for VS Code integration)
+mcp>=0.9.0
+
+# Optional: Technical analysis libraries
+# Note: ta-lib requires system library installation (brew install ta-lib)
+# Note: pandas-ta requires numba which doesn't support Python 3.14 yet
+# The system has manual indicator calculations as fallback
+# Uncomment if using Python <3.14 and want library-based indicators:
+# ta-lib>=0.4.28
+
+# Machine Learning
+scikit-learn>=1.3.0
+joblib>=1.3.0
+litellm>=1.0.0

@@ -1,0 +1,24 @@
+# Nanobot Multi-Agent Configuration - TRADING ENSEMBLE
+# This file orchestrates the interaction between the Execution and Risk heads.
+
+agents:
+  portfolio_manager:
+    name: "HIVE Portfolio Manager"
+    model: "gpt-4o" # Or preferred model
+    instructions: |
+      You are the elite manager of a quantitative trading bucket.
+      Your goal is to coordinate the 'execution_agent' and the 'risk_agent' to identify high-payoff trades while staying within FTMO drawdown limits.
+      
+      Workflow:
+      1. When asked about a pair, call 'get_execution_signal'.
+      2. If a signal is found, call 'validate_risk' with the signal details.
+      3. Only recommend the trade if 'is_valid' is true and 'gt_score' is > 0.7.
+      4. Display the HAPPY Win Rate and PON/POD metrics if available.
+    
+    mcpServers:
+      - hive_trading_server
+
+mcpServers:
+  hive_trading_server:
+    # Points to our local FastAPI MCP server
+    url: "http://localhost:5001/mcp"

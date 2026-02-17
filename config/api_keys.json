@@ -1,0 +1,27 @@
+{
+  "alpha_vantage": {
+    "api_key": "ZPZJ0I024MUSTQHG",
+    "base_url": "https://www.alphavantage.co/query",
+    "rate_limit_per_minute": 5,
+    "rate_limit_per_day": 500
+  },
+  "twelvedata": {
+    "api_key": "190dc38d8eb5407b8e6dd5b5e64aa593",
+    "base_url": "https://api.twelvedata.com",
+    "rate_limit_per_minute": 8,
+    "rate_limit_per_day": 800
+  },
+  "polygon": {
+    "api_key": "YOUR_POLYGON_KEY_HERE",
+    "base_url": "https://api.polygon.io",
+    "rate_limit_per_minute": 5
+  },
+  "telegram": {
+    "bot_token": "8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE",
+    "chat_id": "864840689"
+  },
+  "gemini": {
+    "api_key": "AIzaSyA8Fja6nXeuXGpkJHlbk9w56MVq661QBR0",
+    "model": "gemini-1.5-flash"
+  }
+}
