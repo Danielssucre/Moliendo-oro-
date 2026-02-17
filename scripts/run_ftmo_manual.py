@@ -40,6 +40,14 @@ try:
 except ImportError:
     BAYES_ENABLED = False
     print("⚠️ Bayesian Module not found. Disabling conviction-based sizing.")
+    
+# Import RL Manager (Phase 72) 🤖
+try:
+    from src.nanobot.rl_manager import RLTrailingManager
+    RL_AGENT_ENABLED = True
+except ImportError:
+    RL_AGENT_ENABLED = False
+    print("⚠️ RL Module not found. Disabling RL Trailing.")
 
 import argparse
 
@@ -129,6 +137,9 @@ last_retrain_date = None
 AI_RISK_FACTOR = 1.0 # Phase 14
 last_trade_audit = 0 # Phase 15: Intelligent Management
 last_risk_audit = 0 # Phase 16: System Synergy
+
+# Init RL Manager
+rl_manager = RLTrailingManager() if RL_AGENT_ENABLED else None
 
 def check_auto_retrain():
     """Run retraining on Sundays"""
@@ -419,10 +430,10 @@ def check_correlation_exposure(new_pair, new_type):
         print(f"🚫 CONCENTRATION RISK: Already have active exposure in {new_pair}. Skipping.")
         return False
 
-    # 2. TOPE DE CARTERA: Máximo 3 trades simultáneos en todo el sistema
+    # 2. TOPE DE CARTERA: Máximo 10 trades simultáneos en todo el sistema
     total_exposure = (len(positions) if positions else 0) + (len(orders) if orders else 0)
-    if total_exposure >= 3:
-        print(f"🛑 PORTFOLIO CAP: Max concurrent trades (3) reached. Skipping {new_pair}.")
+    if total_exposure >= 10:
+        print(f"🛑 PORTFOLIO CAP: Max concurrent trades (10) reached. Skipping {new_pair}.")
         return False
 
     # 3. Check USD Direction and Asset Class Saturation
@@ -555,14 +566,52 @@ def manage_active_trades(bot_brain):
                     bot.send_message(f"🎯 *PARTIAL EXIT HIT*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% @ 1.3R + SL moved to BE_")
             except: pass
         
-        # Gather data for AI Audit
-        active_summary.append({
-            'ticket': int(p.ticket),
-            'symbol': symbol,
-            'type': int(p.type),
-            'profit_pips': float(p.profit),
-            'duration_hours': (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
-        })
+            # Gather data for AI Audit
+            active_summary.append({
+                'ticket': int(p.ticket),
+                'symbol': symbol,
+                'type': int(p.type),
+                'profit_pips': float(p.profit),
+                'duration_hours': (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
+            })
+            
+        # RL INFINITE RUNNER (Phase 72)
+        if RL_AGENT_ENABLED and rl_manager and is_partialed:
+            # We already have info and df (via get_mt5_data call might be needed if manage_active_trades doesn't have it)
+            # Actually manage_active_trades has current H1 data in 'df' (calculated for ATR)
+            if 'df' in locals() and not df.empty:
+                action = rl_manager.process_position(p, info, df)
+                if action == "MOVE":
+                    # Move SL by 0.5R
+                    new_sl = p.sl + (risk_pips * 0.5 * info.point) if p.type == 0 else p.sl - (risk_pips * 0.5 * info.point)
+                    sl_request = {
+                        "action": mt5_client.TRADE_ACTION_SLTP,
+                        "symbol": symbol,
+                        "sl": float(new_sl),
+                        "tp": float(p.tp),
+                        "position": p.ticket
+                    }
+                    mt5_client.order_send(sl_request)
+                    logger.info(f"🤖 RL AGENT: Moving SL for {symbol} (+0.5R)")
+                elif action == "CLOSE":
+                    print(f"💥 RL AGENT: Closing {symbol} (#{p.ticket}) for dynamic profit capture.")
+                    tick = mt5_client.symbol_info_tick(symbol)
+                    close_request = {
+                        "action": mt5_client.TRADE_ACTION_DEAL,
+                        "symbol": symbol,
+                        "volume": p.volume,
+                        "type": mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY,
+                        "position": p.ticket,
+                        "price": tick.bid if p.type == 0 else tick.ask,
+                        "comment": "RL AGENT CLOSE",
+                        "type_filling": mt5_client.ORDER_FILLING_IOC,
+                    }
+                    mt5_client.order_send(close_request)
+                    try:
+                        bot = TelegramBot()
+                        if bot.enabled:
+                            bot.send_message(f"🤖 *RL AGENT CLOSE*\nPair: `{symbol}`\nAction: _Dynamic Close for profit capture_")
+                    except: pass
 
     # 🧠 AI Audit (Every 30 minutes)
     if current_time - last_trade_audit > 1800:
