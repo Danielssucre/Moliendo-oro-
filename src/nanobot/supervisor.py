@@ -11,8 +11,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import asdict
 # from litellm import completion # Lazy imported inside methods to prevent hang
 
-from ..utils.logger import logger
-from ..utils.config import config
+from .utils.logger import logger
+from .utils.config import config
 
 class NanobotSupervisor:
     """

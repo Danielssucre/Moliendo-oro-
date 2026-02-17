@@ -27,17 +27,21 @@ venv/
 ENV/
 
 # Data and Logs
-logs/*.log
-logs/*.json
+logs/
+data/cache/
 data/trades_backup.json
 temp/
 tmp/
 
-# Models (Archived ones)
-archive/models/
+# Models (Ignore large checkpoinst, keep active ones if small enough or use LFS)
+# We keep active models in models/, archive is ignored? No, user wants structure.
+# But we might want to ignore very large files if they exceed GitHub limits (100MB).
+# stop_hunt_rf.joblib is ~6MB. infinite_rf is ~400KB.
+# Gatekeeper is small.
 
 # OS
 .DS_Store
 .env
 .ipynb_checkpoints
-logs/
+.idea/
+.vscode/
