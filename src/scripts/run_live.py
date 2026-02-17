@@ -610,7 +610,8 @@ def manage_active_trades(bot_brain):
                     except: pass
 
     # 🧠 AI Audit (Every 30 minutes)
-    if current_time - last_trade_audit > 1800:
+    # 🧠 AI Audit (Every 30 minutes)
+    if bot_brain and (current_time - last_trade_audit > 1800):
         last_trade_audit = current_time
         print("🧠 AI GUARDIAN: Auditing active positions...")
         recommendations = bot_brain.audit_trade_health(active_summary)
@@ -652,32 +653,34 @@ def main():
     # 1. Report Orders on Start (Skipped if not connected)
     if MT5_CONNECTED: cleanup_pending_orders()
     
-    # 2. Nanobot Intelligence Briefing (DeepSeek)
-    try:
-        from src.nanobot.supervisor import NanobotSupervisor
-        bot_brain = NanobotSupervisor(model_name="gemini/gemini-2.0-flash")
-        
-        # Gather Context
-        ctx = {
-            'pairs_count': len(ASSET_MAP),
-            'adx_threshold': 20, # Hardcoded for now based on recent change
-            'avg_volatility': "Analizing..." 
-        }
-        
-        print("\n🧠 NANOBOT INTELLIGENCE (Gemini):")
-        print("-" * 60)
-        briefing = bot_brain.generate_daily_briefing(ctx)
-        print(f"💬 {briefing}")
-        
-        # --- PHASE 14: AI RISK ASSESSMENT ---
-        global AI_RISK_FACTOR
-        risk_assessment = bot_brain.assess_global_risk(ctx)
-        AI_RISK_FACTOR = risk_assessment.get('risk_factor', 1.0)
-        print(f"🛡️ RISK OFFICER: {risk_assessment.get('reason', 'Proceeding with standard protocols.')}")
-        print("-" * 60)
-        
-    except Exception as e:
-        print(f"⚠️ Intelligence Module Error: {e}")
+    # 2. Nanobot Intelligence Briefing (DISABLED)
+    # try:
+    #     from src.nanobot.supervisor import NanobotSupervisor
+    #     bot_brain = NanobotSupervisor(model_name="gemini/gemini-2.0-flash")
+    #     
+    #     # Gather Context
+    #     ctx = {
+    #         'pairs_count': len(ASSET_MAP),
+    #         'adx_threshold': 20, 
+    #         'avg_volatility': "Analizing..." 
+    #     }
+    #     
+    #     print("\n🧠 NANOBOT INTELLIGENCE (Gemini): DISABLED")
+    #     print("-" * 60)
+    #     # briefing = bot_brain.generate_daily_briefing(ctx)
+    #     # print(f"💬 {briefing}")
+    #     
+    #     # --- PHASE 14: AI RISK ASSESSMENT ---
+    #     global AI_RISK_FACTOR
+    #     # risk_assessment = bot_brain.assess_global_risk(ctx)
+    #     # AI_RISK_FACTOR = risk_assessment.get('risk_factor', 1.0)
+    #     # print(f"🛡️ RISK OFFICER: {risk_assessment.get('reason', 'Proceeding with standard protocols.')}")
+    #     print("-" * 60)
+    #     
+    # except Exception as e:
+    #     print(f"⚠️ Intelligence Module Error: {e}")
+    
+    bot_brain = None # Placeholder
 
     # Initialize session start time for PnL tracking (Phase 29: Fresh Start)
     session_start_time = datetime.now()
@@ -1036,13 +1039,19 @@ def main():
                                     gate_msg = f"🛡️ GATEKEEPER: {'ACCEPT' if gk_action==1 else 'REJECT'} ({gk_conf:.2f}) | Fts: Slope={gk_slope_norm:.2f} Vol={gk_vol:.1f}"
                                     logger.info(gate_msg)
                                     
+                                    # Ensure bot instance exists
+                                    try: 
+                                        bot = TelegramBot() 
+                                    except: 
+                                        class bot: enabled=False
+
                                     if gk_action == 0:
                                         if GATEKEEPER_MODE == "ACTIVE":
                                             logger.warning(f"🛑 BLOCKED BY GATEKEEPER")
-                                            if telegram_bot.enabled: telegram_bot.send_message(f"🛑 *BLOCKED BY GATEKEEPER*\n{gate_msg}")
+                                            if bot.enabled: bot.send_message(f"🛑 *BLOCKED BY GATEKEEPER*\n{gate_msg}")
                                             gk_signal_valid = False
                                         elif GATEKEEPER_MODE == "SHADOW":
-                                            if telegram_bot.enabled: telegram_bot.send_message(f"👻 *SHADOW*: Would have BLOCKED\n{gate_msg}")
+                                            if bot.enabled: bot.send_message(f"👻 *SHADOW*: Would have BLOCKED\n{gate_msg}")
 
                             except Exception as e:
                                 logger.error(f"Gatekeeper Logic Error: {e}")
