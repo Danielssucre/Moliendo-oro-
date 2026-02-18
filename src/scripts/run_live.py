@@ -106,7 +106,7 @@ PENDING_ORDER_BUFFER_PIPS = 2.0
 LIMIT_ORDER_RETRACT_PIPS = 3.0
 
 # Setup logging (Console + File)
-log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "logs")
 if not os.path.exists(log_dir): os.makedirs(log_dir)
 
 log_file = os.path.join(log_dir, f"trading_{datetime.now().strftime('%Y%m%d')}.log")
@@ -775,7 +775,7 @@ def main():
             
             # --- PHASE 16: DYNAMIC RISK AUDIT (Every 60 min) ---
             global last_risk_audit
-            if time.time() - last_risk_audit > 3600:
+            if bot_brain and (time.time() - last_risk_audit > 3600):
                 last_risk_audit = time.time()
                 try:
                     ctx = {
