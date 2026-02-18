@@ -773,27 +773,27 @@ def main():
             
             timestamp_str = datetime.now().strftime('%H:%M:%S')
             
-            # --- PHASE 16: DYNAMIC RISK AUDIT (Every 60 min) ---
-            global last_risk_audit
-            if bot_brain and (time.time() - last_risk_audit > 3600):
-                last_risk_audit = time.time()
-                try:
-                    ctx = {
-                        'pairs_count': len(active_summary) if 'active_summary' in locals() else len(ASSET_MAP),
-                        'adx_threshold': 20,
-                        'avg_volatility': "Dynamic Audit"
-                    }
-                    assessment = bot_brain.assess_global_risk(ctx)
-                    AI_RISK_FACTOR = assessment.get('risk_factor', 1.0)
-                    risk_msg = assessment.get('reason', 'Market conditions stable.')
-                    print(f"\n🧠 AI RISK AUDIT: Factory={AI_RISK_FACTOR} | {risk_msg}")
-                    try:
-                        bot = TelegramBot()
-                        if bot.enabled:
-                            bot.send_message(f"🧠 *AI RISK AUDIT*\nFactor: `{AI_RISK_FACTOR}`\nReason: _{risk_msg}_")
-                    except: pass
-                except Exception as e:
-                    logger.error(f"Risk Audit Error: {e}")
+            # --- PHASE 16: DYNAMIC RISK AUDIT (DEACTIVATED) ---
+            # global last_risk_audit
+            # if bot_brain and (time.time() - last_risk_audit > 3600):
+            #     last_risk_audit = time.time()
+            #     try:
+            #         ctx = {
+            #             'pairs_count': len(active_summary) if 'active_summary' in locals() else len(ASSET_MAP),
+            #             'adx_threshold': 20,
+            #             'avg_volatility': "Dynamic Audit"
+            #         }
+            #         assessment = bot_brain.assess_global_risk(ctx)
+            #         AI_RISK_FACTOR = assessment.get('risk_factor', 1.0)
+            #         risk_msg = assessment.get('reason', 'Market conditions stable.')
+            #         print(f"\n🧠 AI RISK AUDIT: Factory={AI_RISK_FACTOR} | {risk_msg}")
+            #         try:
+            #             bot = TelegramBot()
+            #             if bot.enabled:
+            #                 bot.send_message(f"🧠 *AI RISK AUDIT*\nFactor: `{AI_RISK_FACTOR}`\nReason: _{risk_msg}_")
+            #         except: pass
+            #     except Exception as e:
+            #         logger.error(f"Risk Audit Error: {e}")
 
             print(f"\r⏳ Scanning... {timestamp_str} UTC | AI: {'ACTIVE' if stop_hunt_model else 'OFF'}", end="")
             sys.stdout.flush() # FORCE FLUSH for tail -f
