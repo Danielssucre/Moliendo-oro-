@@ -40,6 +40,9 @@ except ImportError:
 from src.nanobot.ml.rl_trailing import RLTrailingManager
 RL_AGENT_ENABLED = True
 
+from src.nanobot.ml.mfe_sniper import MFESniperManager
+SNIPER_ENABLED = True
+
 import argparse
 
 # --- ARGS ---
@@ -129,11 +132,12 @@ AI_RISK_FACTOR = 1.0 # Phase 14
 last_trade_audit = 0 # Phase 15: Intelligent Management
 last_risk_audit = 0 # Phase 16: System Synergy
 
-# Init RL Manager
+# Init RL Managers
 rl_manager = RLTrailingManager() if RL_AGENT_ENABLED else None
+sniper_manager = MFESniperManager() if SNIPER_ENABLED else None
 
 # AI GATES
-GATEKEEPER_MODE = "SHADOW" # "ACTIVE" (Blocks trades) or "SHADOW" (Logs only) or "OFF"
+GATEKEEPER_MODE = "ACTIVE" # "ACTIVE" (Blocks trades) or "SHADOW" (Logs only) or "OFF"
 GATEKEEPER_MODEL_PATH = "models/gatekeeper_qnet_v2.pth"
 GATEKEEPER_SCALER_PATH = "models/gatekeeper_scaler_v2.json"
 
@@ -507,10 +511,10 @@ def manage_active_trades(bot_brain):
         rates = mt5_client.copy_rates_from_pos(symbol, 16385, 0, 20) # H1
         if rates is not None and len(rates) > 14:
             df = pd.DataFrame(rates)
-            # Silicon MT5 returns columns as named fields in a numpy array
-            high = df['high']; low = df['low']; close = df['close']
-            tr = pd.concat([high-low, abs(high-close.shift(1)), abs(low-close.shift(1))], axis=1).max(axis=1)
-            atr = tr.rolling(14).mean().iloc[-1]
+            df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
+            tr = pd.concat([df['high']-df['low'], abs(df['high']-df['close'].shift(1)), abs(df['low']-df['close'].shift(1))], axis=1).max(axis=1)
+            df['atr'] = tr.rolling(14).mean()
+            atr = df['atr'].iloc[-1]
         else:
             atr = 0.002 # Fallback
             
@@ -525,42 +529,48 @@ def manage_active_trades(bot_brain):
         # Check if already partialled (Using comment or local state? Using comment "PARTIAL" is safer)
         is_partialed = "PARTIAL" in p.comment or p.volume < (p.volume_initial if hasattr(p, 'volume_initial') else p.volume)
 
-        if not is_partialed and r_multiple >= 1.3:
-            print(f"🎯 PARTIAL 1.3R REACHED: Closing 50% of {symbol} (#{p.ticket}).")
-            partial_vol = round(p.volume / 2.0, 2)
-            if partial_vol < info.volume_min: partial_vol = p.volume # Close all if too small
+        # 🎯 MFE SNIPER (Surgical Phase): Manage partials before 1.3R
+        if SNIPER_ENABLED and sniper_manager and not is_partialed:
+            # Use current H1 dataframe built for ATR
+            action = sniper_manager.process_position(p, info, df)
             
-            # Close 50%
-            tick = mt5_client.symbol_info_tick(symbol)
-            close_request = {
-                "action": mt5_client.TRADE_ACTION_DEAL,
-                "symbol": symbol,
-                "volume": float(partial_vol),
-                "type": mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY,
-                "position": p.ticket,
-                "price": tick.bid if p.type == 0 else tick.ask,
-                "comment": "PARTIAL 1.3R",
-                "type_filling": mt5_client.ORDER_FILLING_IOC,
-            }
-            mt5_client.order_send(close_request)
-            
-            # Move to BE
-            new_sl = entry_p + (20 * info.point) if p.type == 0 else entry_p - (20 * info.point)
-            sl_request = {
-                "action": mt5_client.TRADE_ACTION_SLTP,
-                "symbol": symbol,
-                "sl": float(new_sl),
-                "tp": float(p.tp),
-                "position": p.ticket
-            }
-            mt5_client.order_send(sl_request)
-            
-            # --- Telegram Notification ---
-            try:
-                bot = TelegramBot()
-                if bot.enabled:
-                    bot.send_message(f"🎯 *PARTIAL EXIT HIT*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% @ 1.3R + SL moved to BE_")
-            except: pass
+            # Baseline compatibility: Also trigger if 1.3R reached (Safety net)
+            if action == "PARTIAL" or r_multiple >= 1.3:
+                reason = "AI SNIPER" if action == "PARTIAL" else "SAFETY 1.3R"
+                print(f"🎯 PARTIAL EXIT TRIGGERED ({reason}): Closing 50% of {symbol} (#{p.ticket}).")
+                partial_vol = round(p.volume / 2.0, 2)
+                if partial_vol < info.volume_min: partial_vol = p.volume
+                
+                # Close 50%
+                tick = mt5_client.symbol_info_tick(symbol)
+                close_request = {
+                    "action": mt5_client.TRADE_ACTION_DEAL,
+                    "symbol": symbol,
+                    "volume": float(partial_vol),
+                    "type": mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY,
+                    "position": p.ticket,
+                    "price": tick.bid if p.type == 0 else tick.ask,
+                    "comment": f"MFE SNIPER {reason}",
+                    "type_filling": mt5_client.ORDER_FILLING_IOC,
+                }
+                mt5_client.order_send(close_request)
+                
+                # Move to BE
+                new_sl = entry_p + (10 * info.point) if p.type == 0 else entry_p - (10 * info.point)
+                sl_request = {
+                    "action": mt5_client.TRADE_ACTION_SLTP,
+                    "symbol": symbol,
+                    "sl": float(new_sl),
+                    "tp": float(p.tp),
+                    "position": p.ticket
+                }
+                mt5_client.order_send(sl_request)
+                
+                try:
+                    bot = TelegramBot()
+                    if bot.enabled:
+                        bot.send_message(f"🎯 *PARTIAL EXIT ({reason})*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% + SL moved to BE_")
+                except: pass
         
             # Gather data for AI Audit
             active_summary.append({
