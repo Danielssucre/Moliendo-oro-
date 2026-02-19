@@ -43,6 +43,9 @@ RL_AGENT_ENABLED = True
 from src.nanobot.ml.mfe_sniper import MFESniperManager
 SNIPER_ENABLED = True
 
+from src.nanobot.ml.risk_oracle import AsymmetricRiskOracle
+RISK_ORACLE_ENABLED = True
+
 import argparse
 
 # --- ARGS ---
@@ -699,12 +702,14 @@ def main():
     # 3. Connect MT5 (Late Init to prevent hang)
     init_mt5()
 
-    # Initialize Bayesian and Kelly Engines
-    kelly_engine = None
+    # Initialize Risk Oracle (Quantum RL-Ready)
+    risk_oracle = None
     account_peak = 0.0
-    if BAYES_ENABLED:
-        from src.nanobot.kelly_sizing import KellyBeliefEngine
-        kelly_engine = KellyBeliefEngine(fraction=0.25)
+    if RISK_ORACLE_ENABLED:
+        risk_oracle = AsymmetricRiskOracle(
+            fraction=0.20, 
+            rl_model_path="models/risk_oracle_rl_v1.zip"
+        )
         
         # Initial Balance to start peak tracking
         if MT5_CONNECTED:
@@ -713,7 +718,7 @@ def main():
                 account_peak = float(acc_init.balance)
                 global current_capital
                 current_capital = account_peak
-                print(f"⚖️ KELLY SIZING ENGINE: Active (Fractional 0.25x) | Peak: ${account_peak:.2f} | Risk Base: ${current_capital:.2f}")
+                print(f"🏦 QUANTUM RISK RL: Active | Peak: ${account_peak:.2f}")
 
     # 4. Report Orders
     if MT5_CONNECTED: cleanup_pending_orders()   
@@ -893,35 +898,47 @@ def main():
                         ml_risk_score = 0.5 # Default
                         confidence_factor = 1.0
                         
-                        # --- PHASE 22: FRACTIONAL KELLY SIZING (Calibrated) ---
+                        # --- PHASE 23: QUANTUM RISK ORACLE (Asymmetric Sizing) ---
                         bayesian_mult = 1.0
-                        if kelly_engine:
+                        if RISK_ORACLE_ENABLED and risk_oracle:
                             if ML_ENABLED and stop_hunt_model:
                                 try:
                                     features = stop_hunt_model.extract_features(data, row['close'], {'rsi': row['rsi'], 'adx': row['adx'], 'atr': row['atr'], 'vwap': row['close']})
                                     ml_risk_score = stop_hunt_model.predict_risk(features)
-                                    
-                                    # Calibrated Success Prob = 1.0 - ML Risk (Trap Probability)
                                     prob_success = 1.0 - ml_risk_score
                                     
-                                    # Get Kelly Mult based on prob and target R:R (1.5)
-                                    acc = mt5_client.account_info()
-                                    current_dd = 0.0
-                                    if acc:
-                                        account_peak = max(account_peak, float(acc.balance))
-                                        current_dd = (account_peak - float(acc.balance)) / account_peak
-                                        
-                                    bayesian_mult = kelly_engine.calculate_sizing_multiplier(prob_success, reward_risk=1.5, current_dd=current_dd)
+                                    # Calculate Portfolio Heat (Total current risk)
+                                    exposure_heat = 0.0
+                                    if MT5_CONNECTED:
+                                        from src.nanobot.ml.risk_oracle import calculate_portfolio_heat
+                                        exposure_heat = calculate_portfolio_heat(mt5_client, None)
+                                        acc = mt5_client.account_info()
+                                        if acc:
+                                            account_peak = max(account_peak, float(acc.balance))
+                                            current_dd = (account_peak - float(acc.balance)) / account_peak
+                                        else: current_dd = 0.0
+                                    else: current_dd = 0.0
                                     
-                                    if ml_risk_score > 0.75:
-                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (High Stop-Hunt Probability)")
+                                    # Quantum RL/Math Sizing!
+                                    bayesian_mult = risk_oracle.calculate_sizing_multiplier(
+                                        probability=prob_success, 
+                                        reward_risk=1.5, 
+                                        current_dd=current_dd,
+                                        exposure_heat=exposure_heat,
+                                        adx=adx_val,
+                                        rsi=row['rsi'],
+                                        vol=current_vol
+                                    )
+                                    
+                                    if ml_risk_score > 0.85: # Slightly more aggressive limit with Oracle
+                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (Extreme Trap)")
                                         continue
                                     
                                     if bayesian_mult <= 0:
-                                        logger.warning(f"⚖️ [5/7] KELLY SKIP: {pair} No mathematical edge detected (f* <= 0).")
+                                        logger.warning(f"⚖️ [5/7] ORACLE SKIP: {pair} Non-asymmetric edge (f=0).")
                                         continue
 
-                                    logger.info(f"✅ [5/7] ML CALIBRATED: {pair} Prob={prob_success:.2f} | Kelly Mult={bayesian_mult:.2f}x")
+                                    logger.info(f"🏦 [5/7] ORACLE CALIBRATED: {pair} Prob={prob_success:.2f} | Mult={bayesian_mult:.2f}x")
                                 except Exception as e:
                                     logger.error(f"⚠️ ML/Kelly Error: {e}")
                             else:

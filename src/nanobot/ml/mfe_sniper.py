@@ -21,7 +21,7 @@ class MFESniperManager:
             try:
                 self.model = DQN.load(model_path)
                 self.enabled = True
-                # print(f"🎯 MFE Sniper Loaded from {model_path}")
+                print(f"🎯 MFE Sniper Surgical v2 Loaded from {model_path}")
             except Exception as e:
                 print(f"❌ Failed to load MFE Sniper model: {e}")
         else:
