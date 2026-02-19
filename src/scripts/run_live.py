@@ -65,18 +65,63 @@ RISK_PER_TRADE = 0.004 # 0.4% (Scientific Sweet Spot)
 MT5_CONNECTED = False
 mt5_client = None
 
+class MT5ConnectionManager:
+    """
+    Robust Connection Handler for Silicon MT5.
+    Implements exponential backoff and continuous health checks.
+    """
+    def __init__(self, port=8001):
+        self.port = port
+        self.client = None
+        self.connected = False
+        
+    def connect(self, max_retries=5):
+        global MT5_CONNECTED, mt5_client
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                from siliconmetatrader5 import MetaTrader5
+                self.client = MetaTrader5(port=self.port)
+                if self.client.initialize():
+                    self.connected = True
+                    MT5_CONNECTED = True
+                    mt5_client = self.client
+                    print(f"🍏 SILICON MT5 CONNECTED: {self.client.version()}")
+                    return True
+                else:
+                    print(f"🍎 MT5 Connection Failed (Attempt {attempt+1}/{max_retries}): {self.client.last_error()}")
+            except Exception as e:
+                print(f"⚠️ SiliconLib Error (Attempt {attempt+1}/{max_retries}): {e}")
+                
+            time.sleep(retry_delay)
+            retry_delay *= 2 # Exponential backoff
+            
+        print("❌ CRITICAL: Could not connect to MT5 after multiple attempts.")
+        return False
+
+    def ensure_connected(self):
+        """Called within the main loop to reconnect if dropped."""
+        global MT5_CONNECTED, mt5_client
+        if not self.client:
+            return self.connect(max_retries=1)
+            
+        # Check connection status (Mock check usually, SiliconLib doesn't have explicit ping)
+        # We assume if initialize worked, it's good unless error thrown.
+        # But if we wanted to be sure, we could try a lightweight call.
+        try:
+            self.client.terminal_info()
+            return True
+        except:
+            print("⚠️ Connection lost! Reconnecting...")
+            self.connected = False
+            MT5_CONNECTED = False
+            return self.connect(max_retries=3)
+
+mt5_manager = MT5ConnectionManager()
+
 def init_mt5():
-    global MT5_CONNECTED, mt5_client
-    try:
-        from siliconmetatrader5 import MetaTrader5
-        mt5_client = MetaTrader5(port=8001)
-        if mt5_client.initialize():
-            MT5_CONNECTED = True
-            print(f"🍏 SILICON MT5 CONNECTED: {mt5_client.version()}")
-        else:
-            print(f"🍎 MT5 Connection Failed: {mt5_client.last_error()}")
-    except Exception as e:
-        print(f"⚠️ SiliconLib Error: {e}")
+    return mt5_manager.connect()
 
 
 # Asset Mapping (HIVE V5 ALL-STARS)
@@ -122,8 +167,7 @@ logging.basicConfig(
     format='%(asctime)s | %(levelname)-8s | %(message)s',
     datefmt='%H:%M:%S',
     handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(log_file)
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger("NAANOBOT_FTMO")
@@ -773,12 +817,64 @@ def main():
     # {pair: 'YYYY-MM-DD'}
     last_signal_date = {} 
     
+    last_pulse_time = time.time()
+    
     print(f"⏳ Scanning... (Ctrl+C to stop)")
     
     while True:
         try:
+            # 0. Connection Watchdog
+            if not mt5_manager.ensure_connected():
+                logger.error("❌ Link Lost. Waiting for recovery...")
+                time.sleep(5)
+                continue
+
             # Check for AI Retraining
             check_auto_retrain()
+
+            # --- PHASE 26: TELEGRAM PULSE (Heartbeat) ---
+            if time.time() - last_pulse_time > 60: # Every 60 seconds
+                last_pulse_time = time.time()
+                try:
+                    if MT5_CONNECTED:
+                        acc = mt5_client.account_info()
+                        positions = mt5_client.positions_get()
+                        
+                        if acc:
+                            equity = acc.equity
+                            balance = acc.balance
+                            daily_pnl = equity - INITIAL_CAPITAL # Approx daily PnL relative to start of script
+                            
+                            # Validar si hay cambios reales para no spamear si todo está igual
+                            # Pero usuario pidió "cada minuto" explícitamente.
+                            
+                            pos_summary = ""
+                            if positions:
+                                for p in positions:
+                                    # Use getattr for safety with SiliconLib objects
+                                    swap = getattr(p, 'swap', 0.0)
+                                    comm = getattr(p, 'commission', 0.0)
+                                    profit = p.profit + swap + comm
+                                    symbol = p.symbol
+                                    type_str = "BUY" if p.type == 0 else "SELL"
+                                    pos_summary += f"\n🔹 {symbol} {type_str}: ${profit:.2f}"
+                            else:
+                                pos_summary = "\n💤 No Active Trades"
+                                
+                            msg = (
+                                f"💓 *STATUS PULSE* 💓\n"
+                                f"💰 Bal: ${balance:,.2f}\n"
+                                f"📈 Eq:  ${equity:,.2f}\n"
+                                f"📊 PnL Session: ${daily_pnl:+.2f}\n"
+                                f"{pos_summary}"
+                            )
+                            
+                            bot = TelegramBot()
+                            if bot.enabled: 
+                                bot.send_message(msg)
+                                logger.info("💓 Pulse Sent to Telegram")
+                except Exception as e:
+                    logger.error(f"Pulse Error: {e}")
 
             # --- PHASE 15: AI TRADE GUARDIAN ---
             try:
