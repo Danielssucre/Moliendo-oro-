@@ -79,3 +79,36 @@ class AsymmetricRiskOracle:
         multiplier = max(0.0, base_mult * dd_penalty)
         
         return min(multiplier, self.max_mult)
+
+def calculate_portfolio_heat(mt5, symbol=None):
+    """
+    Calculates total risk exposure of the account in percentage.
+    Uses Stop Loss distance to calculate R-multiple heat.
+    """
+    try:
+        positions = mt5.positions_get()
+        if not positions or len(positions) == 0:
+            return 0.0
+            
+        total_risk_pct = 0.0
+        acc = mt5.account_info()
+        balance = float(acc.balance) if acc else 10000.0
+        
+        for pos in positions:
+            if pos.sl > 0:
+                # Calculate risk in money terms
+                # Distance * Volume * TickValue/TickSize
+                s_info = mt5.symbol_info(pos.symbol)
+                if s_info:
+                    risk_dist = abs(pos.open_price - pos.sl)
+                    # Simple approximation if tick value is complex
+                    risk_amt = (risk_dist / s_info.point) * s_info.trade_tick_value * pos.volume
+                    total_risk_pct += (risk_amt / balance)
+            else:
+                # If no SL, we assume a 1.5% "logical" heat for the position
+                total_risk_pct += 0.015
+                
+        return total_risk_pct
+    except Exception as e:
+        # Avoid crashing the loop if heat calculation fails
+        return 0.0
