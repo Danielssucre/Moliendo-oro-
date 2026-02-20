@@ -10,9 +10,10 @@ class RiskSizingEnv(gym.Env):
     Action: Discrete [0, 1, 2, 3, 4, 5] -> Map to [0.0, 0.5, 1.0, 1.5, 2.0, 2.5] multiplier
     Reward: Action * Outcome - (Drawdown_Penalty)
     """
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, disciplined=False):
         super(RiskSizingEnv, self).__init__()
         self.df = pd.read_csv(csv_path)
+        self.disciplined = disciplined
         self.current_step = 0
         
         # Action space: 6 discrete multiplier levels
@@ -63,13 +64,19 @@ class RiskSizingEnv(gym.Env):
         # Reward Function: Aggressive Profit Capture
         reward = trade_return_pct * 1000.0  # Much higher incentive for profit
         
+        # Disciplined Mode Enhancement: Harsh penalty for ANY loss
+        if self.disciplined and trade_return_pct < 0:
+            reward *= 20.0 # Extreme pain for a loss (Ultra-Disciplinarian)
+            
         # Drawdown Penalty: Keep it but only for extreme cases (>5%)
         if self.dd > 0.05:
             reward -= (self.dd * 1000.0) ** 1.5 
             
         # Penalty for aggressive sizing on low probability (< 60%)
-        if mult > 1.0 and row['prob'] < 0.60:
-            reward -= 2.0 
+        # In disciplined mode, we are even more conservative (< 70%)
+        prob_threshold = 0.70 if self.disciplined else 0.60
+        if mult > 1.0 and row['prob'] < prob_threshold:
+            reward -= 5.0 if self.disciplined else 2.0 
             
         # Small reward for surviving (Stability incentive)
         reward += 0.01 

@@ -124,32 +124,19 @@ def init_mt5():
     return mt5_manager.connect()
 
 
-# Asset Mapping (HIVE V5 ALL-STARS)
-# Top 11 Performers from "Expansion Scan" (Profit > $300)
+# Phase 30: Elite Selection Portfolio (+91.36R Projection)
 ASSET_MAP = {
-    "AUDUSD": "AUDUSD",
-    "GBPJPY": "GBPJPY",
-    "BTCUSD": "BTCUSD",
-    "NZDUSD": "NZDUSD",
+    "USDCAD": "USDCAD",
     "USDCHF": "USDCHF",
-    "EURNZD": "EURNZD",
-    "GBPUSD": "GBPUSD",
-    "GBPNZD": "GBPNZD",
-    "USDJPY": "USDJPY",
-    "USDCAD": "USDCAD"
+    "AUDUSD": "AUDUSD",
+    "EURNZD": "EURNZD"
 }
 # Phase 71: Auto-Execution Map (Verified 1:1)
 MT5_SYMBOL_MAP = {
-    "AUDUSD": "AUDUSD",
-    "GBPJPY": "GBPJPY",
-    "BTCUSD": "BTCUSD",
-    "NZDUSD": "NZDUSD",
+    "USDCAD": "USDCAD",
     "USDCHF": "USDCHF",
-    "EURNZD": "EURNZD",
-    "GBPUSD": "GBPUSD",
-    "GBPNZD": "GBPNZD",
-    "USDJPY": "USDJPY",
-    "USDCAD": "USDCAD"
+    "AUDUSD": "AUDUSD",
+    "EURNZD": "EURNZD"
 }
 MAX_SPREAD_PIPS = 4.0 # Slightly higher for crypto/crosses
 
@@ -1023,11 +1010,16 @@ def main():
                                         exposure_heat=exposure_heat,
                                         adx=adx_val,
                                         rsi=row['rsi'],
-                                        vol=current_vol
+                                        vol=current_vol,
+                                        symbol=pair
                                     )
                                     
-                                    if ml_risk_score > 0.85: # Slightly more aggressive limit with Oracle
-                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (Extreme Trap)")
+                                    # Phase 29: Per-symbol surgical discipline
+                                    thresholds = {"EURUSD": 0.45, "GBPUSD": 0.65}
+                                    pair_threshold = thresholds.get(pair, 0.85)
+
+                                    if ml_risk_score > pair_threshold: 
+                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (Elite Limit {pair_threshold})")
                                         continue
                                     
                                     if bayesian_mult <= 0:
