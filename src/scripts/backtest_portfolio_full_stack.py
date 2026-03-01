@@ -16,7 +16,9 @@ from src.nanobot.ml.risk_oracle import AsymmetricRiskOracle
 # --- CONFIGURATION ---
 SYMBOLS = ["USDCAD", "USDCHF", "AUDUSD", "EURNZD"]
 TIMEFRAME = "H1"
-LOOKBACK_DAYS = 365
+LOOKBACK_DAYS = 90
+INITIAL_ACCOUNT_CASH = 10000.0
+RISK_PER_TRADE_PCT = 0.004 # 0.4%
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 logger = logging.getLogger("PORTFOLIO_BACKTEST")
@@ -180,13 +182,20 @@ def run_portfolio_bt():
         return
 
     tdf = pd.DataFrame(all_trades)
+    total_r = tdf['final_r'].sum()
+    total_dollar_profit = total_r * INITIAL_ACCOUNT_CASH * RISK_PER_TRADE_PCT
+    final_balance = INITIAL_ACCOUNT_CASH + total_dollar_profit
+    
     print("\n" + "="*90)
-    print("📊 RESULTADOS CONSOLIDADOS DEL PORTAFOLIO")
+    print("📊 RESULTADOS CONSOLIDADOS DEL PORTAFOLIO (90 DÍAS)")
     print("-" * 90)
-    print(f"Total Trades:       {len(tdf)}")
-    print(f"Win Rate Promedio:   {len(tdf[tdf['raw_r'] > 0]) / len(tdf):.1%}")
-    print(f"Rentabilidad Total:  {tdf['final_r'].sum():.2f}R")
-    print(f"Expectativa Promedio:{tdf['final_r'].mean():.2f}R por señal")
+    print(f"Cuenta Inicial:      ${INITIAL_ACCOUNT_CASH:,.2f}")
+    print(f"Total Trades:        {len(tdf)}")
+    print(f"Win Rate Promedio:    {len(tdf[tdf['raw_r'] > 0]) / len(tdf):.1%}")
+    print(f"Rentabilidad Total:   {total_r:.2f}R")
+    print(f"Beneficio en $:      ${total_dollar_profit:,.2f}")
+    print(f"Balance Final:       ${final_balance:,.2f}")
+    print(f"Rentabilidad %:      {(total_dollar_profit / INITIAL_ACCOUNT_CASH)*100:.2f}%")
     print(f"Max Portfolio DD (R):{ (tdf.sort_values('date')['final_r'].cumsum().cummax() - tdf.sort_values('date')['final_r'].cumsum()).max():.2f}R")
     print("="*90 + "\n")
 

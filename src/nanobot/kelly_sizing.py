@@ -40,6 +40,9 @@ class KellyBeliefEngine:
         effective_alpha = active_fraction * uncertainty_factor
         
         # 3. Raw Kelly f*
+        if b <= 0: 
+            logger.warning(f"⚖️ [KELLY] INVALID REWARD/RISK: b={b:.4f}. RECOMMEND SKIP.")
+            return 0.0
         f_star = (b * p - q) / b
         
         # 4. Final Sizing Logic

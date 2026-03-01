@@ -50,27 +50,32 @@ class TelegramBot:
         if not self.enabled:
             return
             
-        # Format the message
-        direction_emoji = "🟢" if signal['direction'] == "BUY" else "🔴"
+        # Format the message (Defensive Phase 8)
+        direction = str(signal.get('direction', '')).upper()
+        direction_emoji = "🟢" if direction == "BUY" else "🔴"
+        pair = signal.get('pair', 'UNKNOWN')
+        entry = signal.get('entry', 0.0)
+        sl = signal.get('sl', 0.0)
+        tp = signal.get('tp', 0.0)
         
         msg = (
-            f"*{direction_emoji} SIGNAL: {signal['pair']}*\n"
+            f"*{direction_emoji} SIGNAL: {pair}*\n"
             f"Strategy: {signal.get('strategy', 'Hybrid')}\n"
-            f"Time: `{signal['timestamp']}`\n\n"
+            f"Time: `{signal.get('timestamp', 'N/A')}`\n\n"
             
-            f"*ENTRY: {signal['entry']:.5f}*\n"
-            f"SL: `{signal['sl']:.5f}` ({signal['sl_pips']:.1f} pips)\n"
-            f"TP: `{signal['tp']:.5f}`\n\n"
+            f"*ENTRY: {entry:.5f}*\n"
+            f"SL: `{sl:.5f}` ({signal.get('sl_pips', 0.0):.1f} pips)\n"
+            f"TP: `{tp:.5f}`\n\n"
             
             f"📊 *Indicators*\n"
-            f"ADX: `{signal.get('adx', 0):.1f}`\n"
-            f"RSI: `{signal.get('rsi', 0):.1f}`\n"
-            f"ATR: `{signal.get('atr', 0):.5f}`\n\n"
+            f"ADX: `{signal.get('adx', 0.0):.1f}`\n"
+            f"RSI: `{signal.get('rsi', 0.0):.1f}`\n"
+            f"ATR: `{signal.get('atr', 0.0):.5f}`\n\n"
             
             f"💰 *Risk (Fixed 1%)*\n"
             f"Lots: *{signal.get('lot_size', 0.0)}*\n"
-            f"Risk: ${signal.get('risk_amount', 0):.2f}\n"
-            f"Capital: ${signal.get('capital', 0):,.2f}\n\n"
+            f"Risk: ${signal.get('risk_amount', 0.0):.2f}\n"
+            f"Capital: ${signal.get('capital', 0.0):,.2f}\n\n"
             
             f"🔮 *Oracle Verification*\n"
             f"Status: {'✅ CONFIRMED' if signal.get('oracle_verified') else '⚠️ WARNING'}"

@@ -70,7 +70,7 @@ class RLTrailingManager:
             
         return action
 
-    def process_position(self, p, info, df_h1):
+    def process_position(self, p, info, df_h1, mt5_client=None):
         """
         Live processing of an MT5 position.
         Returns: action_type ('HOLD', 'MOVE', 'CLOSE')
@@ -81,27 +81,42 @@ class RLTrailingManager:
         # 1. Calculate Real-time metrics
         entry_p = p.price_open
         sl_p = p.sl
-        risk_pips = abs(entry_p - sl_p) / info.point if sl_p > 0 else (p.price_current * 0.002 / info.point) # Fallback
+        tp_p = p.tp
         
-        # Protect against zero risk_pips
-        if risk_pips == 0: risk_pips = 1.0 
+        # Phase 4 Fix: Mathematical Stability for R-multiples
+        # Use TP distance to deduce initial risk if SL has been moved to BE or Trailing.
+        # Strategy: RR Target is 1.5, so Initial Risk = (TP Distance) / 1.5
+        tp_dist_pips = abs(tp_p - entry_p) / info.point if tp_p > 0 else (p.price_current * 0.003 / info.point)
+        initial_risk_pips = tp_dist_pips / 1.5
+        
+        # Stability check
+        if initial_risk_pips < 1.0: initial_risk_pips = 10.0 # Standard fallback
         
         current_pips = (p.price_current - entry_p) / info.point
         if p.type == 1: # SELL
             current_pips = -current_pips
             
-        current_r = current_pips / risk_pips
+        current_r = current_pips / initial_risk_pips
         
-        # Max R tracking (needs persistent storage or use p.comment / p.profit_max if available)
-        # For now, we'll estimate Max R from recent H1 high/low
-        if p.type == 0: # BUY
-            max_price = df_h1['high'].iloc[-24:].max() # Last 24 hours
-            max_pips = (max_price - entry_p) / info.point
+        # True MFE tracking (Phase 4 Logic Hardening)
+        # Using MT5 history since position opening time
+        if hasattr(p, 'time_setup'):
+            pos_time = datetime.fromtimestamp(p.time_setup)
+            rates_since = mt5_client.copy_rates_from(p.symbol, mt5_client.TIMEFRAME_H1, pos_time, datetime.now())
+            if rates_since is not None and len(rates_since) > 0:
+                m_df = pd.DataFrame(rates_since)
+                if p.type == 0: # BUY
+                    max_price = m_df['high'].max()
+                    max_pips = (max_price - entry_p) / info.point
+                else: # SELL
+                    max_price = m_df['low'].min()
+                    max_pips = (entry_p - max_price) / info.point
+            else:
+                max_pips = current_pips
         else:
-            max_price = df_h1['low'].iloc[-24:].min()
-            max_pips = (entry_p - max_price) / info.point
+            max_pips = current_pips # Fallback
             
-        max_r_est = max_pips / risk_pips
+        max_r_est = max_pips / initial_risk_pips
         
         # Indicators
         ema_9 = df_h1['close'].ewm(span=9, adjust=False).mean()

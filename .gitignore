@@ -45,3 +45,7 @@ tmp/
 .ipynb_checkpoints
 .idea/
 .vscode/
+
+# Credentials
+config/credentials.json
+config/api_keys.json

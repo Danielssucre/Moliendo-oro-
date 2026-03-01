@@ -108,48 +108,41 @@ class RiskCalculator:
         self,
         entry_price: float,
         stop_loss: float,
-        pair: str = "EURUSD"
+        pair: str = "EURUSD",
+        symbol_info: object = None
     ) -> float:
         """
-        Calculate position size based on risk percentage.
+        Calculate position size based on institutional risk formulas.
         
         Args:
             entry_price: Entry price
             stop_loss: Stop loss price
             pair: Currency pair
+            symbol_info: MT5 symbol info object (optional, for precise tick-value math)
         
         Returns:
             Position size in lots
         """
-        # Calculate risk amount in account currency
         risk_amount = self.capital * (self.max_risk_percent / 100)
+        sl_diff = abs(entry_price - stop_loss)
         
-        # Calculate pip value (assuming standard lot = 100,000 units)
-        # For most pairs: 1 pip = 0.0001
-        pip_size = 0.0001
+        if sl_diff == 0: return 0.0
         
-        # Special cases for JPY pairs
-        if "JPY" in pair:
-            pip_size = 0.01
+        # UNIVERSAL FORMULA (Phase 3/4 Implementation)
+        if symbol_info:
+            tick_size = symbol_info.trade_tick_size
+            tick_value = symbol_info.trade_tick_value
+            if tick_size > 0 and tick_value > 0:
+                lots = risk_amount / ((sl_diff / tick_size) * tick_value)
+                return round(lots, 2)
         
-        # Calculate risk in pips
-        risk_pips = abs(entry_price - stop_loss) / pip_size
+        # Legacy/Fallback (only if MT5 info is missing)
+        pip_size = 0.01 if "JPY" in pair else 0.0001
+        risk_pips = sl_diff / pip_size
+        pip_value_per_lot = 10.0 # XXX/USD standard
         
-        if risk_pips == 0:
-            return 0.0
-        
-        # Calculate pip value for 1 standard lot
-        # For XXXUSD pairs: $10 per pip per standard lot
-        # Simplified calculation
-        pip_value_per_lot = 10.0
-        
-        # Calculate position size
         position_size = risk_amount / (risk_pips * pip_value_per_lot)
-        
-        # Round to 2 decimals (0.01 lot = 1 micro lot)
-        position_size = round(position_size, 2)
-        
-        return position_size
+        return round(position_size, 2)
     
     def calculate_full_risk_params(
         self,
@@ -157,7 +150,8 @@ class RiskCalculator:
         direction: str,
         atr: float,
         pair: str = "EURUSD",
-        rr_ratio: float = None
+        rr_ratio: float = None,
+        symbol_info: object = None
     ) -> RiskParameters:
         """
         Calculate all risk parameters.
@@ -191,7 +185,7 @@ class RiskCalculator:
         actual_rr = reward_pips / risk_pips if risk_pips > 0 else 0
         
         # Calculate position size
-        position_size = self.calculate_position_size(entry_price, stop_loss, pair)
+        position_size = self.calculate_position_size(entry_price, stop_loss, pair, symbol_info=symbol_info)
         
         # Calculate risk amount
         risk_amount = self.capital * (self.max_risk_percent / 100)

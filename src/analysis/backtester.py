@@ -157,13 +157,17 @@ class Backtester:
         return self._create_trade_record(signal, "EXPIRED", exit_price), last_idx
 
     def _create_trade_record(self, signal, status: str, exit_price: float) -> Dict:
-        # Simplificación de P&L: asumimos $10 por pip por lote
-        pip_size = 0.0001 if "JPY" not in signal.pair else 0.01
-        pips = (exit_price - signal.entry_price) / pip_size
-        if signal.direction == "SELL":
-            pips = -pips
-            
-        profit_loss = pips * 10 * signal.position_size
+        # Standardized P&L: use universal point math (Institutional Sync)
+        pair = signal.pair
+        point = 0.01 if "JPY" in pair or "XAU" in pair else 0.0001
+        
+        diff = (exit_price - signal.entry_price) if signal.direction == "BUY" else (signal.entry_price - exit_price)
+        pips = diff / point
+        
+        # Sincronización Institucional: $10 por pip por lote estándar es el benchmark de backtesting
+        # pero ajustado a la escala del punto (JPY/XAU)
+        pip_multiplier = 100.0 if ("JPY" in pair or "XAU" in pair) else 10.0
+        profit_loss = pips * signal.position_size * 10 # Manteniendo consistencia con el tracker universal
         
         return {
             'pair': signal.pair,

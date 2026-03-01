@@ -193,7 +193,8 @@ class SignalGenerator:
         exposure_warning: str = None,
         market_narrative: list = None,
         strengths: list = None,
-        warnings: list = None
+        warnings: list = None,
+        symbol_info: object = None
     ) -> TradingSignal:
         """
         Generate complete trading signal.
@@ -209,7 +210,8 @@ class SignalGenerator:
             entry_price=entry_price,
             direction=direction.lower(),
             atr=atr,
-            pair=pair
+            pair=pair,
+            symbol_info=symbol_info
         )
         
         # Multi-TP Targets calculation
@@ -333,20 +335,26 @@ class SignalGenerator:
         indicators: Dict,
         trend_summary: Dict
     ) -> str:
-        """Build entry reason text."""
-        current_price = indicators.get('current_price', 0)
-        ema_50 = indicators.get('ema_50', 0)
+        """Dynamic Entry Reason based on Market Regime."""
+        regime = trend_summary.get('regime', 'unknown')
+        adx = indicators.get('adx', 0)
+        rsi = indicators.get('rsi', 50)
         
+        # Build a narrative based on actual metrics
+        parts = []
         if direction.lower() == "buy":
-            return (
-                f"Precio encuentra soporte en EMA50 ({ema_50:.5f}). "
-                f"Corrección dentro de tendencia alcista presenta oportunidad de compra."
-            )
+            if adx > 25: parts.append(f"Impulso alcista detectado (ADX={adx:.1f})")
+            if rsi < 40: parts.append("Oversold/Dip en tendencia mayor")
+            if indicators.get('macd', 0) > 0: parts.append("Momentum MACD alcista confirmando")
         else:
-            return (
-                f"Precio encuentra resistencia en EMA50 ({ema_50:.5f}). "
-                f"Corrección dentro de tendencia bajista presenta oportunidad de venta."
-            )
+            if adx > 25: parts.append(f"Impulso bajista detectado (ADX={adx:.1f})")
+            if rsi > 60: parts.append("Overbought/Rebote en resistencia")
+            if indicators.get('macd', 0) < 0: parts.append("Momentum MACD bajista confirmando")
+            
+        if not parts:
+            parts.append(f"Confluencia técnica en {direction.upper()}")
+            
+        return ". ".join(parts) + "."
     
     def _build_risk_justification(
         self,

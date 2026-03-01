@@ -38,7 +38,7 @@ class MFESniperManager:
         action, _states = self.model.predict(state, deterministic=True)
         return int(action)
 
-    def process_position(self, p, info, df_h1):
+    def process_position(self, p, info, df_h1, mt5_client=None):
         """
         Inference for a live MT5 position.
         Returns: action_type ('HOLD', 'PARTIAL', 'FULL')
@@ -48,18 +48,39 @@ class MFESniperManager:
         # Calculate R metrics
         entry_p = p.price_open
         sl_p = p.sl
+        tp_p = p.tp
         point = info.point
-        risk_pips = abs(entry_p - sl_p) / point if sl_p > 0 else 100.0
+        
+        # Phase 4 Fix: Mathematical Stability for R-multiples
+        tp_dist_pips = abs(tp_p - entry_p) / point if tp_p > 0 else (p.price_current * 0.003 / point)
+        initial_risk_pips = tp_dist_pips / 1.5
+        if initial_risk_pips < 1.0: initial_risk_pips = 10.0
         
         current_pips = (p.price_current - entry_p) / point
         if p.type == 1: current_pips = -current_pips # SELL
-        current_r = current_pips / risk_pips
+        current_r = current_pips / initial_risk_pips
         
-        # Max R Estimation (Simple for inference)
-        # In production we track this via history or comment, for now let's use p.profit
-        # but the model needs R values.
-        # Assume max_r = current_r for fresh bars or use high/low of current session
-        max_r = max(current_r, 0) 
+        # True MFE tracking (Phase 4 Logic Hardening)
+        if mt5_client and hasattr(p, 'time_setup'):
+            from datetime import datetime
+            import pandas as pd
+            pos_time = datetime.fromtimestamp(p.time_setup)
+            rates_since = mt5_client.copy_rates_from(p.symbol, mt5_client.TIMEFRAME_H1, pos_time, datetime.now())
+            if rates_since is not None and len(rates_since) > 0:
+                m_df = pd.DataFrame(rates_since)
+                if p.type == 0: # BUY
+                    max_price = m_df['high'].max()
+                    max_pips = (max_price - entry_p) / point
+                else: # SELL
+                    max_price = m_df['low'].min()
+                    max_pips = (entry_p - max_price) / point
+            else:
+                max_pips = current_pips
+        else:
+            max_pips = current_r * initial_risk_pips # Simple estimate if client missing
+            
+        max_r = max_pips / initial_risk_pips
+        
         # Indicators
         avg_price = (p.price_open + p.price_current) / 2
         atr_norm = (df_h1['atr'].iloc[-1] / avg_price) if avg_price > 0 else 0.001

@@ -69,12 +69,12 @@ class Notificador:
         if not self.enabled:
             return False
             
-        pair = signal_data.get('pair')
-        direction = signal_data.get('direction', '').upper()
-        entry = signal_data.get('entry_price')
-        tp = signal_data.get('take_profit')
-        sl = signal_data.get('stop_loss')
-        prob = signal_data.get('probability', 0)
+        pair = signal_data.get('pair', 'UNKNOWN')
+        direction = str(signal_data.get('direction', '')).upper()
+        entry = signal_data.get('entry_price', 0.0)
+        tp = signal_data.get('take_profit', 0.0)
+        sl = signal_data.get('stop_loss', 0.0)
+        prob = signal_data.get('probability', 0.0)
         
         emoji = "🚀" if direction == "BUY" else "🔻"
         
@@ -85,7 +85,7 @@ class Notificador:
             f"✅ *Take Profit*: `{tp:.5f}`\n"
             f"❌ *Stop Loss*: `{sl:.5f}`\n\n"
             f"📊 *Probabilidad*: `{prob:.1%}`\n"
-            f"💰 *Uso API*: `{api_manager.request_count}/800` (Hoy)\n\n"
+            f"💰 *Uso API*: `{getattr(api_manager, 'request_count', 0)}/800` (Hoy)\n\n"
             f"💡 _Recuerda operar con gestión de riesgo._"
         )
         

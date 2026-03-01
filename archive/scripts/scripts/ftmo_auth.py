@@ -11,13 +11,17 @@ print(f"📡 Attempting to login to MT5 (Server: {SERVER}, Login: {LOGIN})...")
 try:
     mt5 = MetaTrader5(port=8001)
     
-    if not mt5.initialize():
+    LOGIN = 1512629315
+    PASSWORD = "@zn49Hw4W2*"
+    SERVER = "FTMO-Demo"
+    if not mt5.initialize(path='C:\\Program Files\\MetaTrader 5\\terminal64.exe', portable=True, login=LOGIN, password=PASSWORD, server=SERVER):
         print(f"❌ Initialize failed: {mt5.last_error()}")
-        sys.exit(1)
         
-    print("✅ MT5 Bridge Initialized.")
-    
-    # Attempt login
+        # Second attempt without portable flag
+        print("Retrying without portable flag...")
+        if not mt5.initialize(path='C:\\Program Files\\MetaTrader 5\\terminal64.exe', login=LOGIN, password=PASSWORD, server=SERVER):
+            print(f"❌ Second Initialize failed: {mt5.last_error()}")
+            sys.exit(1)
     login_result = mt5.login(login=LOGIN, password=PASSWORD, server=SERVER)
     
     if login_result:

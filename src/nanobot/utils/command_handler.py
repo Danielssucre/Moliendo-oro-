@@ -129,8 +129,20 @@ class CommandHandler:
                 sl = float(parts[5])
                 lots = float(parts[6]) if len(parts) > 6 else 0.01
                 
-                self.agent.trade_tracker.register_trade(pair, direction, entry, tp, sl, lots)
-                return f"✅ *Operación Registrada*: {direction} {pair} @ {entry}. Monitoreando Break Even..."
+                # Calculate initial risk pips for the 'Iron Shield' foundation (Precision Sync)
+                point = 0.01 if "JPY" in pair or "XAU" in pair else 0.0001
+                risk_pips = abs(entry - sl) / point
+                
+                self.agent.trade_tracker.register_trade(
+                    pair=pair, 
+                    direction=direction, 
+                    entry_price=entry, 
+                    take_profit=tp, 
+                    stop_loss=sl, 
+                    lot_size=lots,
+                    initial_risk_pips=risk_pips
+                )
+                return f"✅ *Operación Registrada*: {direction} {pair} @ {entry}. Riesgo inicial: `{risk_pips:.1f}` pips."
             except Exception as e:
                 return f"❌ Error en formato: `{str(e)}`"
                 

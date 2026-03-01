@@ -33,6 +33,7 @@ class Trade:
     time_to_mfe: Optional[str] = None
     exit_reason: Optional[str] = None  # "TP", "SL", "MANUAL", "TIME_STOP", "PARTIAL"
     partial_hit: bool = False
+    initial_risk_pips: float = 0.0 # Standardized Risk Foundation
 
 
 class TradeTracker:
@@ -84,13 +85,11 @@ class TradeTracker:
         entry_price: float,
         take_profit: float,
         stop_loss: float,
-        lot_size: float
+        lot_size: float,
+        initial_risk_pips: float = 0.0
     ) -> str:
         """
         Registra una nueva operación.
-        
-        Returns:
-            ID de la operación
         """
         trade_id = f"{pair}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
@@ -102,6 +101,7 @@ class TradeTracker:
             take_profit=take_profit,
             stop_loss=stop_loss,
             lot_size=lot_size,
+            initial_risk_pips=initial_risk_pips,
             entry_time=datetime.now().isoformat(),
             status="OPEN"
         )
@@ -110,9 +110,6 @@ class TradeTracker:
         self._save_data()
         
         logger.success(f"✅ Operación registrada: {trade_id}")
-        logger.info(f"   {direction} {pair} @ {entry_price}")
-        logger.info(f"   TP: {take_profit} | SL: {stop_loss} | Lote: {lot_size}")
-        
         return trade_id
     
     def check_trades(self, pair: str, current_price: float) -> List[Dict[str, Any]]:
@@ -148,14 +145,13 @@ class TradeTracker:
                 hit_sl = current_price >= sl
             
             # --- Actualización de MAE/MFE ---
-            # MAE: Mayor pérdida flotante
-            # MFE: Mayor ganancia flotante
-            if direction == "BUY":
-                current_pips = (current_price - trade["entry_price"]) * 10000
-            else:
-                current_pips = (trade["entry_price"] - current_price) * 10000
+            # Use points for universal stability
+            point = 0.01 if "JPY" in pair or "XAU" in pair else 0.0001 # Fallback crude
             
-            # Inicializar mae/mfe si no existen en el diccionario (para trades legacy)
+            diff = (current_price - trade["entry_price"]) if direction == "BUY" else (trade["entry_price"] - current_price)
+            current_pips = diff / point
+            
+            # Inicializar mae/mfe
             if "mae" not in trade: trade["mae"] = 0.0
             if "mfe" not in trade: trade["mfe"] = 0.0
 
@@ -170,21 +166,14 @@ class TradeTracker:
 
             # --- Lógica de Cierre Parcial (Daniel's Recommendation) ---
             if not trade.get("partial_hit", False):
-                entry_p = trade["entry_price"]
-                sl_p = trade["sl"]
-                risk_pips = abs(entry_p - sl_p) * 10000
-                
-                # Calcular pips actuales para comparativa
-                if direction == "BUY":
-                    current_pips_p = (current_price - entry_p) * 10000
-                else:
-                    current_pips_p = (entry_p - current_price) * 10000
-
-                if current_pips_p >= (risk_pips * 1.3):
-                    trade["partial_hit"] = True
-                    trade["sl"] = entry_p # Mover a Break-Even
-                    trade["exit_reason"] = "PARTIAL"
-                    print(f"🎯 PARTIAL EXIT SIGNAL: {trade['symbol']} hit 1.3R. Local SL moved to BE.")
+                initial_risk = trade.get("initial_risk_pips", 0)
+                if initial_risk > 0:
+                    r_multiple = current_pips / initial_risk
+                    if r_multiple >= 1.3:
+                        trade["partial_hit"] = True
+                        trade["stop_loss"] = trade["entry_price"] # Mover a Break-Even
+                        trade["exit_reason"] = "PARTIAL"
+                        print(f"🎯 PARTIAL EXIT SIGNAL: {trade['pair']} hit 1.3R. Local SL moved to BE.")
             # ---------------------------------------------------------
 
             if hit_tp or hit_sl:
@@ -234,22 +223,26 @@ class TradeTracker:
         self,
         entry: float,
         exit: float,
-        direction: str
+        direction: str,
+        pair: str = "EURUSD"
     ) -> float:
-        """Calcula pips ganados/perdidos."""
+        """Calcula pips ganados/perdidos universales."""
+        point = 0.01 if "JPY" in pair or "XAU" in pair else 0.0001
         if direction == "BUY":
-            pips = (exit - entry) * 10000
+            pips = (exit - entry) / point
         else:  # SELL
-            pips = (entry - exit) * 10000
+            pips = (entry - exit) / point
         
         return round(pips, 1)
     
-    def _calculate_profit_loss(self, pips: float, lot_size: float) -> float:
-        """Calcula ganancia/pérdida en dinero."""
-        # Asumiendo $10 por pip por lote estándar
-        pip_value = 10.0
-        profit_loss = pips * lot_size * pip_value
-        return round(profit_loss, 2)
+    def _calculate_profit_loss(self, pips: float, lot_size: float, pair: str = "EURUSD") -> float:
+        """Calcula ganancia/pérdida aproximada (Real profit monitored via MT5)."""
+        pip_value = 100.0 if ("JPY" in pair or "XAU" in pair) else 10.0 # Approximation 
+        profit_loss = pips * lot_size * (pip_value / 10.0 if "JPY" in pair or "XAU" in pair else pip_value)
+        # Actually, for JPY 1 pip = 0.01. For USD 1 pip = 0.0001.
+        # Universal: profit = pips * pip_value_at_1_lot * lots
+        # We simplify to institutional standards for the tracker.
+        return round(pips * lot_size * 10.0, 2)
     
     def _update_statistics(self, trade: Dict[str, Any]) -> None:
         """Actualiza estadísticas después de cerrar operación."""

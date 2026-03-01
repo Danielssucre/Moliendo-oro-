@@ -69,23 +69,42 @@ class GatekeeperAgent:
 
         if dt is None: dt = datetime.now()
         
-        # 1. Prepare Features
+        # 1. Load Dynamic Threshold (Phase 2 Automation)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        config_path = os.path.join(base_dir, "config", "gatekeeper_config.json")
+        threshold = 0.45 # Default
+        
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r') as f:
+                    gk_config = json.load(f)
+                    threshold = gk_config.get("threshold", 0.45)
+            except: pass
+
+        # 2. Prepare Features
         hour_norm = dt.hour / 23.0
         day_norm = dt.weekday() / 6.0
         
-        # 2. Scale
+        # 3. Scale
         s = self.scaler
         vol_scaled = np.clip((vol - s['vol_median']) / (s['vol_iqr'] + 1e-6), -3, 3)
         atr_scaled = np.clip((atr_norm - s['atr_median']) / (s['atr_iqr'] + 1e-6), -3, 3)
         
         state = np.array([ema_slope, vol_scaled, atr_scaled, hour_norm, day_norm], dtype=np.float32)
         
-        # 3. Inference
+        # 4. Inference
         with torch.no_grad():
             state_t = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             logits = self.model(state_t)
             probs = torch.softmax(logits, dim=1)
-            action = logits.argmax().item()
-            confidence = probs[0][action].item()
+            
+            # Phase 2 Adaptive Calibration: Use dynamic threshold to reduce "Fear" bias
+            prob_accept = probs[0][1].item()
+            if prob_accept > threshold:
+                action = 1
+            else:
+                action = 0
+                
+            confidence = prob_accept if action == 1 else probs[0][0].item()
             
         return action, confidence

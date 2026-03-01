@@ -11,9 +11,10 @@ import time
 import logging
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import json
+from datetime import datetime, timedelta, timezone
 
-# Add project root to path (Two levels up from src/scripts/)
+# --- LOGGING SETUP ---
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
@@ -37,14 +38,47 @@ except ImportError:
         BAYES_ENABLED = False
         print("⚠️ Kelly Module missing.")
 
-from src.nanobot.ml.rl_trailing import RLTrailingManager
-RL_AGENT_ENABLED = True
+try:
+    from src.nanobot.ml.rl_trailing import RLTrailingManager
+    RL_AGENT_ENABLED = True
+except Exception as e:
+    RL_AGENT_ENABLED = False
+    print(f"⚠️ RL Trailing disabled (torch not found): {e}")
+    class RLTrailingManager: pass  # Stub
 
-from src.nanobot.ml.mfe_sniper import MFESniperManager
-SNIPER_ENABLED = True
+try:
+    from src.nanobot.ml.mfe_sniper import MFESniperManager
+    SNIPER_ENABLED = True
+except Exception as e:
+    SNIPER_ENABLED = False
+    print(f"⚠️ MFE Sniper disabled (torch not found): {e}")
+    class MFESniperManager: pass  # Stub
 
-from src.nanobot.ml.risk_oracle import AsymmetricRiskOracle
-RISK_ORACLE_ENABLED = True
+try:
+    from src.nanobot.ml.risk_oracle import AsymmetricRiskOracle
+    RISK_ORACLE_ENABLED = True
+except Exception as e:
+    RISK_ORACLE_ENABLED = False
+    print(f"⚠️ Risk Oracle disabled: {e}")
+    class AsymmetricRiskOracle: pass  # Stub
+
+# --- TELEGRAM BOT (Global) ---
+bot = TelegramBot()
+
+# --- LOGGING SETUP ---
+log_dir = "logs"
+if not os.path.exists(log_dir): os.makedirs(log_dir)
+log_file = os.path.join(log_dir, f"trading_{datetime.now().strftime('%Y%m%d')}.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)-8s | %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("NAANOBOT_FTMO")
 
 import argparse
 
@@ -74,7 +108,20 @@ class MT5ConnectionManager:
         self.port = port
         self.client = None
         self.connected = False
+        self.creds = self._load_creds()
         
+    def _load_creds(self):
+        """Loads account credentials if they exist."""
+        try:
+            creds_path = os.path.join("config", "credentials.json")
+            if os.path.exists(creds_path):
+                with open(creds_path, 'r') as f:
+                    data = json.load(f)
+                    return data.get("mt5")
+        except Exception as e:
+            print(f"⚠️ Could not load Credentials: {e}")
+        return None
+
     def connect(self, max_retries=5):
         global MT5_CONNECTED, mt5_client
         retry_delay = 2
@@ -83,7 +130,32 @@ class MT5ConnectionManager:
             try:
                 from siliconmetatrader5 import MetaTrader5
                 self.client = MetaTrader5(port=self.port)
-                if self.client.initialize():
+                # Credenciales extraídas del JSON para puentear el error -6 de autorización de Wine Native
+                import json
+                try:
+                    with open('config/credentials.json') as f:
+                        creds = json.load(f)['mt5']
+                        c_login = creds['account']
+                        c_pass = creds['password']
+                        c_server = creds['server']
+                except:
+                    c_login = 1512629315
+                    c_pass = "@zn49Hw4W2*"
+                    c_server = "FTMO-Demo"
+                    
+                if self.client.initialize(path='C:\\Program Files\\MetaTrader 5\\terminal64.exe', portable=True, login=c_login, password=c_pass, server=c_server):
+                    # PERFORM LOGIN if creds exist
+                    if self.creds:
+                        acc = int(self.creds.get("account", 0))
+                        pw = self.creds.get("password", "")
+                        srv = self.creds.get("server", "")
+                        if acc and pw and srv:
+                            if self.client.login(acc, pw, srv):
+                                print(f"✅ LOGIN SUCCESSFUL: #{acc} ({srv})")
+                            else:
+                                print(f"❌ LOGIN FAILED: {self.client.last_error()}")
+                                # We continue anyway, as it might be already logged in manually
+                    
                     self.connected = True
                     MT5_CONNECTED = True
                     mt5_client = self.client
@@ -92,7 +164,7 @@ class MT5ConnectionManager:
                 else:
                     print(f"🍎 MT5 Connection Failed (Attempt {attempt+1}/{max_retries}): {self.client.last_error()}")
             except Exception as e:
-                print(f"⚠️ SiliconLib Error (Attempt {attempt+1}/{max_retries}): {e}")
+                print(f"⚠️ MT5 Connection Error (Attempt {attempt+1}/{max_retries}): {e}")
                 
             time.sleep(retry_delay)
             retry_delay *= 2 # Exponential backoff
@@ -106,9 +178,6 @@ class MT5ConnectionManager:
         if not self.client:
             return self.connect(max_retries=1)
             
-        # Check connection status (Mock check usually, SiliconLib doesn't have explicit ping)
-        # We assume if initialize worked, it's good unless error thrown.
-        # But if we wanted to be sure, we could try a lightweight call.
         try:
             self.client.terminal_info()
             return True
@@ -123,21 +192,68 @@ mt5_manager = MT5ConnectionManager()
 def init_mt5():
     return mt5_manager.connect()
 
+def get_initial_risk_pips(ticket, symbol, entry_p, point):
+    """
+    IRON SHIELD (Phase 5 Hardening):
+    Scans history to find the REAL original stop-loss.
+    """
+    import time
+    
+    # Check history 1 year back to be safe
+    from_date = datetime.now() - timedelta(days=365)
+    deals = mt5_client.history_deals_get(from_date, datetime.now(), position=ticket)
+    
+    if deals:
+        for d in deals:
+            # Entry deal (TYPE_BUY or TYPE_SELL and ENTRY_IN)
+            d_entry = getattr(d, 'entry', -1)
+            d_sl    = getattr(d, 'sl', 0)
+            if d_entry == 0:  # 0 is ENTRY_IN in MT5
+                if d_sl > 0:
+                    risk_pips = abs(entry_p - d_sl) / point
+                    logger.info(f"🛡️ IRON SHIELD: Original SL found for #{ticket}: {d_sl} ({risk_pips:.1f} pips)")
+                    return risk_pips
+    
+    # Fallback only if history is missing or no SL was set at entry
+    logger.warning(f"⚠️ IRON SHIELD: Could not find original SL for #{ticket} in history. Using fallback.")
+    return None
 
-# Phase 30: Elite Selection Portfolio (+91.36R Projection)
-ASSET_MAP = {
-    "USDCAD": "USDCAD",
-    "USDCHF": "USDCHF",
-    "AUDUSD": "AUDUSD",
-    "EURNZD": "EURNZD"
+
+# Phase 30: Portfolio Mixto 2026 — Selección NY/Londres
+DEFAULT_ASSET_MAP = {
+    # MAJORS
+    "EURUSD": "EURUSD", "GBPUSD": "GBPUSD", "USDJPY": "USDJPY", 
+    "AUDUSD": "AUDUSD", "USDCAD": "USDCAD", "NZDUSD": "NZDUSD",
+    # CROSSES
+    "GBPJPY": "GBPJPY", "EURJPY": "EURJPY", "EURGBP": "EURGBP",
+    "AUDJPY": "AUDJPY", "CHFJPY": "CHFJPY", "CADJPY": "CADJPY",
+    "EURAUD": "EURAUD", "GBPAUD": "GBPAUD", "EURNZD": "EURNZD",
+    "NZDJPY": "NZDJPY",
+    # METALS & COMMODITIES
+    "XAUUSD": "XAUUSD", "XAGUSD": "XAGUSD", "WTI": "WTI",
+    # INDICES
+    "NAS100": "NAS100", "SPX500": "SPX500", "DAX40": "DAX40", "US30": "US30",
+    # CRYPTO
+    "BTCUSD": "BTCUSD", "ETHUSD": "ETHUSD", "SOLUSD": "SOLUSD"
 }
-# Phase 71: Auto-Execution Map (Verified 1:1)
-MT5_SYMBOL_MAP = {
-    "USDCAD": "USDCAD",
-    "USDCHF": "USDCHF",
-    "AUDUSD": "AUDUSD",
-    "EURNZD": "EURNZD"
-}
+
+# Load Dynamic Portfolio (Phase 2 Automation)
+base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+portfolio_path = os.path.join(base_dir, "config", "portfolio.json")
+
+if os.path.exists(portfolio_path):
+    try:
+        with open(portfolio_path, 'r') as f:
+            dynamic_portfolio = json.load(f)
+            ASSET_MAP = dynamic_portfolio.get("assets", DEFAULT_ASSET_MAP)
+            logger.info(f"🔄 DYNAMIC PORTFOLIO LOADED: {list(ASSET_MAP.keys())}")
+    except:
+        ASSET_MAP = DEFAULT_ASSET_MAP
+else:
+    ASSET_MAP = DEFAULT_ASSET_MAP
+
+MT5_SYMBOL_MAP = ASSET_MAP
+logger.info(f"🚀 FINAL PORTFOLIO SYNC: {list(MT5_SYMBOL_MAP.keys())}")
 MAX_SPREAD_PIPS = 4.0 # Slightly higher for crypto/crosses
 
 PENDING_ORDER_BUFFER_PIPS = 2.0
@@ -145,19 +261,6 @@ LIMIT_ORDER_RETRACT_PIPS = 3.0
 
 # Setup logging (Console + File)
 log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "logs")
-if not os.path.exists(log_dir): os.makedirs(log_dir)
-
-log_file = os.path.join(log_dir, f"trading_{datetime.now().strftime('%Y%m%d')}.log")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s | %(levelname)-8s | %(message)s',
-    datefmt='%H:%M:%S',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger("NAANOBOT_FTMO")
 
 # Init ML
 stop_hunt_model = StopHuntModel() if ML_ENABLED else None
@@ -175,6 +278,71 @@ GATEKEEPER_MODE = "ACTIVE" # "ACTIVE" (Blocks trades) or "SHADOW" (Logs only) or
 GATEKEEPER_MODEL_PATH = "models/gatekeeper_qnet_v2.pth"
 GATEKEEPER_SCALER_PATH = "models/gatekeeper_scaler_v2.json"
 
+# ─────────────────────────────────────────────────────────
+# 🔴 CIRCUIT BREAKER — Protección Anti-Tilt por Par
+#   Bloquea un par si ocurre CUALQUIERA de las dos condiciones:
+#     1. ≥ 2 pérdidas consecutivas en el día UTC actual
+#     2. Pérdida acumulada ≥ $80 en el día UTC actual
+# ─────────────────────────────────────────────────────────
+CB_MAX_CONSECUTIVE_LOSSES = 2     # Disparador 1: losses seguidos
+CB_MAX_DAILY_LOSS_USD     = 80.0  # Disparador 2: pérdida diaria en $
+
+def get_daily_pair_stats(symbol: str, max_loss_usd: float = 80.0) -> dict:
+    """
+    Consulta el historial de deals de MT5 para el día UTC actual
+    y retorna las métricas del circuit breaker para un par específico.
+
+    Args:
+        symbol: El par a consultar.
+        max_loss_usd: El límite dinámico de pérdida por par para hoy.
+    """
+    try:
+        today_utc = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        deals = mt5_client.history_deals_get(today_utc, datetime.now(timezone.utc))
+        if not deals:
+            return {'consecutive_losses': 0, 'daily_loss_usd': 0.0, 'is_blocked': False, 'reason': ''}
+
+        # Filtrar solo los deals del símbolo que cierran posición (profit != 0)
+        sym_deals = sorted(
+            [d for d in deals
+             if getattr(d, 'symbol', '') == symbol
+             and getattr(d, 'profit', 0) != 0],
+            key=lambda d: d.time
+        )
+
+        daily_loss   = sum(getattr(d, 'profit', 0) for d in sym_deals if getattr(d, 'profit', 0) < 0)
+        daily_loss   = abs(daily_loss)
+
+        # Contar pérdidas consecutivas desde el final (más recientes primero)
+        consecutive = 0
+        for d in reversed(sym_deals):
+            if getattr(d, 'profit', 0) < 0:
+                consecutive += 1
+            else:
+                break  # Win interrumpe la racha
+
+        # Evaluar umbrales
+        blocked = False
+        reason  = ''
+        if consecutive >= CB_MAX_CONSECUTIVE_LOSSES:
+            blocked = True
+            reason  = f"{consecutive} pérdidas consecutivas (límite {CB_MAX_CONSECUTIVE_LOSSES})"
+        elif daily_loss >= max_loss_usd:
+            blocked = True
+            reason  = f"Pérdida diaria ${daily_loss:.2f} ≥ ${max_loss_usd:.2f} (límite dinámico)"
+
+        return {
+            'consecutive_losses': consecutive,
+            'daily_loss_usd':     daily_loss,
+            'is_blocked':         blocked,
+            'reason':             reason,
+        }
+    except Exception as e:
+        logger.warning(f"⚠️ CB: Error calculando stats de {symbol}: {e}")
+        return {'consecutive_losses': 0, 'daily_loss_usd': 0.0, 'is_blocked': False, 'reason': ''}
+
 def check_auto_retrain():
     """Run retraining on Sundays"""
     global stop_hunt_model, last_retrain_date
@@ -190,7 +358,7 @@ def check_auto_retrain():
                 import subprocess
                 
                 # Execute training script as subprocess to ensure clean memory
-                script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_model_60d.py")
+                script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_all_specialized_agents.py")
                 subprocess.run([sys.executable, script_path], check=True)
                 
                 # Reload Model
@@ -236,52 +404,183 @@ def calculate_atr(df, period=14):
 
 def analyze_hybrid_signal(df):
     """
-    Core Logic: HIVE V5 - Trend State Check (Not Crossover)
+    Core Logic: HIVE V5 — Multi-Strategy Engine (Phase 15)
+    Evaluates: ZENITH (Cons), HIVE V6 (Agg), and ORION (Pullback).
     """
-    df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
-    df['ema_15'] = df['close'].ewm(span=15, adjust=False).mean()
+    df['ema_9']   = df['close'].ewm(span=9,   adjust=False).mean()
+    df['ema_15']  = df['close'].ewm(span=15,  adjust=False).mean()
     df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
-    df['atr'] = calculate_atr(df)
-    
-    # ADX
+    df['atr']     = calculate_atr(df)
+
+    # ADX & RSI (14)
     period = 14
     high = df['high']; low = df['low']; close = df['close']
     tr = pd.concat([high-low, (high-close.shift()).abs(), (low-close.shift()).abs()], axis=1).max(axis=1)
     atr_smooth = tr.ewm(alpha=1/period, adjust=False).mean()
     up = high.diff(); down = -low.diff()
-    plus_dm = pd.Series(0.0, index=df.index); minus_dm = pd.Series(0.0, index=df.index)
-    plus_dm[(up > down) & (up > 0)] = up[(up > down) & (up > 0)]
+    plus_dm  = pd.Series(0.0, index=df.index)
+    minus_dm = pd.Series(0.0, index=df.index)
+    plus_dm[(up > down) & (up > 0)]    = up[(up > down) & (up > 0)]
     minus_dm[(down > up) & (down > 0)] = down[(down > up) & (down > 0)]
-    plus_di = 100 * (plus_dm.ewm(alpha=1/period, adjust=False).mean() / atr_smooth)
+    plus_di  = 100 * (plus_dm.ewm(alpha=1/period, adjust=False).mean()  / atr_smooth)
     minus_di = 100 * (minus_dm.ewm(alpha=1/period, adjust=False).mean() / atr_smooth)
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     df['adx'] = dx.ewm(alpha=1/period, adjust=False).mean()
-    
-    # RSI
+
     delta = close.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(7).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(7).mean()
-    rs = gain / loss
+    gain  = (delta.where(delta > 0, 0)).rolling(period).mean()
+    loss  = (-delta.where(delta < 0, 0)).rolling(period).mean()
+    rs    = gain / loss
     df['rsi'] = 100 - (100 / (1 + rs))
+
+    # Bollinger Bands (Institutional Standard for EPSILON)
+    df['bb_mid'] = df['close'].rolling(window=20).mean()
+    df['bb_std'] = df['close'].rolling(window=20).std()
+    df['bb_upper'] = df['bb_mid'] + (df['bb_std'] * 2)
+    df['bb_lower'] = df['bb_mid'] - (df['bb_std'] * 2)
     
-    # Check Last Candle
+    # Track Daily High/Low (Simplified for DELTA)
+    df['rolling_high_24'] = df['high'].rolling(window=24).max()
+    df['rolling_low_24']  = df['low'].rolling(window=24).min()
+
     row = df.iloc[-1]
     
+    # Session Analysis (UTC)
+    now_utc = datetime.now(timezone.utc).hour
+    # High Mobility Session: London Open to NY Mid-session (07:00 - 18:00 UTC)
+    is_high_mobility = (7 <= now_utc <= 18)
+
+    # 1. EMA Crossover Window
+    CROSS_WINDOW = 3
+    window = df.iloc[-(CROSS_WINDOW + 1):]
+    last_cross = 0
+    is_ultra_fresh = False
+    for i in range(len(window) - 1):
+        c = window.iloc[i]; n = window.iloc[i + 1]
+        if c['ema_9'] <= c['ema_15'] and n['ema_9'] > n['ema_15']:
+            last_cross = 1; is_ultra_fresh = (i == len(window) - 2)
+        elif c['ema_9'] >= c['ema_15'] and n['ema_9'] < n['ema_15']:
+            last_cross = -1; is_ultra_fresh = (i == len(window) - 2)
+
     sig = 0
     strategy = "None"
-    
-    # HIVE V5 STATE LOGIC:
-    # Are we IN a Trend? (EMA9 > EMA15 > EMA200)
-    # We do NOT check "prev" (Crossover). We check "Current State".
-    
-    # Buy State
-    if row['ema_9'] > row['ema_15'] and row['close'] > row['ema_200']:
-        sig = 1; strategy = "HIVE V5 Buy State"
-    # Sell State
-    elif row['ema_9'] < row['ema_15'] and row['close'] < row['ema_200']:
-        sig = -1; strategy = "HIVE V5 Sell State"
+
+    # --- VARIANTE A: ZENITH (Conservative) ---
+    # EMA Cross (Window) + ADX > 25 + RSI Confirm
+    if last_cross != 0 and row['adx'] > 25:
+        if last_cross == 1 and row['close'] > row['ema_200'] and row['rsi'] > 50:
+            sig = 1; strategy = "ZENITH (Conservative)"
+        elif last_cross == -1 and row['close'] < row['ema_200'] and row['rsi'] < 50:
+            sig = -1; strategy = "ZENITH (Conservative)"
+
+    # --- VARIANTE B: HIVE V6 (Aggressive) ---
+    # Global sensitivity. Lower ADX threshold. (24/7 monitoring)
+    if sig == 0 and last_cross != 0 and row['adx'] > 18:
+        if last_cross == 1 and row['close'] > row['ema_200'] and row['rsi'] > 45:
+            sig = 1; strategy = "HIVE V6 (Aggressive NY)"
+        elif last_cross == -1 and row['close'] < row['ema_200'] and row['rsi'] < 55:
+            sig = -1; strategy = "HIVE V6 (Aggressive NY)"
+
+    # --- VARIANTE C: ORION (Pullback Sniper) ---
+    if sig == 0 and row['adx'] > 20:
+        prev_rsi = df['rsi'].iloc[-2]
+        if row['ema_9'] > row['ema_15'] and row['close'] > row['ema_200']:
+            if prev_rsi < 45 and row['rsi'] >= 45:
+                sig = 1; strategy = "ORION (Pullback Sniper)"
+        elif row['ema_9'] < row['ema_15'] and row['close'] < row['ema_200']:
+            if prev_rsi > 55 and row['rsi'] <= 55:
+                sig = -1; strategy = "ORION (Pullback Sniper)"
+
+    # --- FASE 16: MOTOR DE PROSPECCIÓN FRACTAL (Micro-Lots) ---
+    if sig == 0:
+        # FRACTAL ALPHA: Fast Momentum (EMA 5/13)
+        df['ema_5']  = df['close'].ewm(span=5,  adjust=False).mean()
+        df['ema_13'] = df['close'].ewm(span=13, adjust=False).mean()
+        c5 = df['ema_5'].iloc[-2]; n5 = df['ema_5'].iloc[-1]
+        c13 = df['ema_13'].iloc[-2]; n13 = df['ema_13'].iloc[-1]
+        
+        if c5 <= c13 and n5 > n13 and row['rsi'] > 50:
+            sig = 1; strategy = "FRACTAL ALPHA (Fast EMA)"
+        elif c5 >= c13 and n5 < n13 and row['rsi'] < 50:
+            sig = -1; strategy = "FRACTAL ALPHA (Fast EMA)"
             
+    if sig == 0:
+        # FRACTAL BETA: Mean Reversion (Extreme RSI + Low ADX)
+        if row['adx'] < 20:
+            if row['rsi'] < 30:
+                sig = 1; strategy = "FRACTAL BETA (Mean Reversion)"
+            elif row['rsi'] > 70:
+                sig = -1; strategy = "FRACTAL BETA (Mean Reversion)"
+
+    if sig == 0:
+        # FRACTAL GAMMA: Chaos Breakout (L3 H/L)
+        l3 = df.iloc[-4:-1]
+        if row['close'] > l3['high'].max():
+            sig = 1; strategy = "FRACTAL GAMMA (L3 Breakout)"
+        elif row['close'] < l3['low'].min():
+            sig = -1; strategy = "FRACTAL GAMMA (L3 Breakout)"
+
+    # --- FASE 17: EL DESAFÍO DE LA MEJOR (TEMP 2) ---
+    if sig == 0:
+        # FRACTAL DELTA: Liquidity Sweep (Stop Hunt Hunter)
+        # Entry: Price breaks last 24h H/L and closes back inside with rejection
+        prev_h = df['rolling_high_24'].iloc[-2]
+        prev_l = df['rolling_low_24'].iloc[-2]
+        # Bullish Sweep: Low was below prev_l, but Close is above it
+        if df['low'].iloc[-1] < prev_l and row['close'] > prev_l and row['rsi'] < 40:
+            sig = 1; strategy = "FRACTAL DELTA (Liquidity Sweep)"
+        # Bearish Sweep: High was above prev_h, but Close is below it
+        elif df['high'].iloc[-1] > prev_h and row['close'] < prev_h and row['rsi'] > 60:
+            sig = -1; strategy = "FRACTAL DELTA (Liquidity Sweep)"
+
+    if sig == 0:
+        # FRACTAL EPSILON: Institutional Mean Reversion
+        # Entry: RSI extreme + BB Breach
+        if row['rsi'] < 30 and row['close'] < row['bb_lower']:
+            sig = 1; strategy = "FRACTAL EPSILON (Mean Reversion)"
+        elif row['rsi'] > 70 and row['close'] > row['bb_upper']:
+            sig = -1; strategy = "FRACTAL EPSILON (Mean Reversion)"
+
+    if sig == 0:
+        # FRACTAL ZETA: ADX Squeeze / Explosion
+        # Entry: ADX was < 15 (Squeeze) and now crosses 18 (Explosion)
+        prev_adx = df['adx'].iloc[-2]
+        if prev_adx < 15 and row['adx'] >= 17:
+            # Trend Direction check
+            if row['ema_9'] > row['ema_15']:
+                sig = 1; strategy = "FRACTAL ZETA (ADX Squeeze)"
+            elif row['ema_9'] < row['ema_15']:
+                sig = -1; strategy = "FRACTAL ZETA (ADX Squeeze)"
+
+    if sig == 0:
+        # FRACTAL ETA: Ghost Sniper (SMC / FVG)
+        # 1. Detect FVG in the last 3 completed candles
+        # Bullish FVG: Low[i] > High[i-2]
+        c0 = df.iloc[-1]; c1 = df.iloc[-2]; c2 = df.iloc[-3]
+        fvg_bull = c0['low'] > c2['high']
+        fvg_bear = c0['high'] < c2['low']
+        
+        # Entry: Price is retesting the gap and aligned with EMA 200
+        if fvg_bull and row['close'] > row['ema_200'] and row['rsi'] < 55:
+            sig = 1; strategy = "FRACTAL ETA (Ghost Sniper)"
+        elif fvg_bear and row['close'] < row['ema_200'] and row['rsi'] > 45:
+            sig = -1; strategy = "FRACTAL ETA (Ghost Sniper)"
+
     return sig, strategy, row
+
+def get_filling_mode(symbol_info):
+    """
+    Returns the correct order filling mode supported by the broker for this symbol.
+    Tries FOK first, then IOC, then RETURN (Market) as fallback.
+    """
+    filling_type = symbol_info.filling_mode
+    if filling_type & 1:  # ORDER_FILLING_FOK
+        return mt5_client.ORDER_FILLING_FOK
+    elif filling_type & 2:  # ORDER_FILLING_IOC
+        return mt5_client.ORDER_FILLING_IOC
+    else:
+        return mt5_client.ORDER_FILLING_RETURN
+
 
 def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume):
     """
@@ -289,50 +588,53 @@ def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume):
     """
     if not MT5_CONNECTED: return
     
-    symbol_mt5 = MT5_SYMBOL_MAP.get(pair)
-    if not symbol_mt5:
-        print(f"❌ MT5 Mapping Not Found for {pair}")
-        return
-
+    symbol_mt5 = MT5_SYMBOL_MAP.get(pair, pair) # Fallback to pair if not in map
+    
     # Check Spread & Tick
     info = mt5_client.symbol_info(symbol_mt5)
     tick = mt5_client.symbol_info_tick(symbol_mt5)
     if not info or not tick:
-        print(f"❌ Symbol Info/Tick Failed: {symbol_mt5}")
+        logger.error(f"❌ Symbol Info/Tick Failed: {symbol_mt5}")
         return
         
-    # --- SMART ENTRY (Live Data) ---
-    # Convert points/pips
-    pip_val = 0.01 if "JPY" in pair else 0.0001
-    if "BTC" in pair: pip_val = 1.0 # Crypto points usually $1
-    if "SOL" in pair: pip_val = 0.1
+    # Phase 3: Universal Pip/Point Logic
+    pip_val = info.point 
+    # For Forex, 1 pip = 10 points usually. For Gold/Crypto, point is usually the min tick.
+    # We use a standard "Institutional Pip" for spread display, but info.point for buffer.
+    pips_in_point = 10 if ("USD" in pair and "JPY" not in pair and "XAU" not in pair and "BTC" not in pair) else 1
     
-    buffer_val = PENDING_ORDER_BUFFER_PIPS * pip_val
+    buffer_val = PENDING_ORDER_BUFFER_PIPS * info.point * pips_in_point
+    filling_mode = get_filling_mode(info)
     
-    # Calculate Distances from original yfinance signal
+    # Phase 4 Logic Hardening: Respect Technical Price
+    # Calculate Distances based on the technical signal price 'price'
     sl_dist = abs(price - sl)
     tp_dist = abs(price - tp)
     
     if "BS" in order_type_str:
-        # Buy Stop > Ask
-        new_price = tick.ask + buffer_val
-        new_sl = new_price - sl_dist
-        new_tp = new_price + tp_dist
+        # Ensure pending order is at least buffer_val above current Ask
+        target_price = max(price, tick.ask + buffer_val)
+        sl = target_price - sl_dist
+        tp = target_price + tp_dist
     else:
-        # Sell Stop < Bid
-        new_price = tick.bid - buffer_val
-        new_sl = new_price + sl_dist
-        new_tp = new_price - tp_dist
+        # Ensure pending order is at least buffer_val below current Bid
+        target_price = min(price, tick.bid - buffer_val)
+        sl = target_price + sl_dist
+        tp = target_price - tp_dist
         
-    # Overwrite used vars
-    price = new_price
-    sl = new_sl
-    tp = new_tp
+    price = target_price
 
     # Check Live Spread
-    live_spread_pips = (tick.ask - tick.bid) / pip_val
-    if live_spread_pips > MAX_SPREAD_PIPS and "USD" in pair and "BTC" not in pair:
-        print(f"⚠️ SPREAD HIGH: {live_spread_pips:.1f} > {MAX_SPREAD_PIPS}")
+    # Use native points for spread calculation to avoid hardcoded pip mismatches
+    live_spread_points = (tick.ask - tick.bid) / info.point
+    
+    # Define max spread in points (Phase 3: Conservative for Forex, relaxed for Crypto/Gold)
+    max_spread_points = 50 # Default 5 pips / 50 points
+    if "BTC" in pair or "ETH" in pair: max_spread_points = 1000 # Relaxed for Crypto
+    if "XAU" in pair: max_spread_points = 100 # Relaxed for Gold ($1.00 spread max)
+
+    if live_spread_points > max_spread_points:
+        logger.warning(f"⚠️ SPREAD HIGH for {pair}: {live_spread_points:.1f} > {max_spread_points} points")
         return
 
     # Check Stops Level (Minimum distance)
@@ -341,11 +643,11 @@ def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume):
     
     if "BS" in order_type_str:
         if abs(price - tick.ask) < min_dist:
-            print(f"⚠️ PRICE TOO CLOSE: Adjusting BS to Min Dist ({min_dist})")
+            logger.info(f"⚠️ PRICE TOO CLOSE: Adjusting BS to Min Dist ({min_dist:.5f})")
             price = tick.ask + min_dist
     else:
         if abs(price - tick.bid) < min_dist:
-            print(f"⚠️ PRICE TOO CLOSE: Adjusting SS to Min Dist ({min_dist})")
+            logger.info(f"⚠️ PRICE TOO CLOSE: Adjusting SS to Min Dist ({min_dist:.5f})")
             price = tick.bid - min_dist
 
     # --- NORMALIZATION ---
@@ -363,13 +665,27 @@ def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume):
     sl = round(sl, info.digits)
     tp = round(tp, info.digits)
     
-    print(f"🤖 EXECUTING {pair}: {volume} lots @ {price}")
+    logger.info(f"🤖 [FINAL_VERIFICATION] {pair}: {volume:.2f} lots @ {price:.5f}")
     
     action = mt5_client.TRADE_ACTION_PENDING
     if "BS" in order_type_str:
-        type_mt5 = mt5_client.ORDER_TYPE_BUY_STOP
+        if price <= tick.ask:
+            # If price is already at or below Ask, use BUY LIMIT or MARKET
+            # For HIVE, we stay Conservative: Buy Limit if below, Market if at
+            type_mt5 = mt5_client.ORDER_TYPE_BUY_LIMIT
+            if abs(price - tick.ask) < info.point: 
+                action = mt5_client.TRADE_ACTION_DEAL
+                type_mt5 = mt5_client.ORDER_TYPE_BUY
+        else:
+            type_mt5 = mt5_client.ORDER_TYPE_BUY_STOP
     else:
-        type_mt5 = mt5_client.ORDER_TYPE_SELL_STOP
+        if price >= tick.bid:
+            type_mt5 = mt5_client.ORDER_TYPE_SELL_LIMIT
+            if abs(price - tick.bid) < info.point:
+                action = mt5_client.TRADE_ACTION_DEAL
+                type_mt5 = mt5_client.ORDER_TYPE_SELL
+        else:
+            type_mt5 = mt5_client.ORDER_TYPE_SELL_STOP
         
     request = {
         "action": action,
@@ -380,18 +696,22 @@ def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume):
         "tp": float(tp),
         "type": type_mt5,
         "type_time": mt5_client.ORDER_TIME_DAY, 
-        "type_filling": mt5_client.ORDER_FILLING_RETURN,
+        "type_filling": filling_mode,
         "comment": "Nanobot HIVE V5",
     }
     
     try:
         result = mt5_client.order_send(request)
         if result.retcode != mt5_client.TRADE_RETCODE_DONE:
-            print(f"❌ ORDER FAILED: {result.comment} ({result.retcode})")
+            err_msg = f"❌ ORDER FAILED: {result.comment} ({result.retcode})"
+            logger.error(err_msg)
+            if bot.enabled: bot.send_message(err_msg)
         else:
-            print(f"✅ ORDER PLACED: #{result.order} | Price: {result.price}")
+            success_msg = f"✅ ORDER PLACED: {pair} #{result.order} | Price: {result.price:.5f}"
+            logger.info(success_msg)
+            if bot.enabled: bot.send_message(success_msg)
     except Exception as e:
-        print(f"⚠️ Execution Exception: {e}")
+        logger.error(f"⚠️ Execution Exception: {e}")
 
 def cleanup_pending_orders():
     """Report pending orders generated by Hive V5."""
@@ -407,7 +727,17 @@ def cleanup_pending_orders():
         for o in orders:
             # Check comment signature: "Nanobot HIVE V5"
             is_hive = "Nanobot" in o.comment
-            print(f"#{o.ticket} | {o.symbol} | {o.type} | Open: {o.price_open} | Hive: {is_hive}")
+            
+            # Phase 8 Verification: Check if SL is synchronized
+            sl_sync_status = "⚠️ SL MISSING"
+            if o.sl > 0:
+                # Prove Iron Shield compatibility: SL diff in pips
+                info = mt5_client.symbol_info(o.symbol)
+                if info:
+                    sl_pips = abs(o.price_open - o.sl) / info.point
+                    sl_sync_status = f"✅ SL SYNC ({sl_pips:.1f} pips)"
+            
+            print(f"#{o.ticket} | {o.symbol} | {o.type} | Open: {o.price_open} | {sl_sync_status} | Hive: {is_hive}")
             print("-" * 60)
             
             # AUTO-DELETE DISABLED BY USER REQUEST
@@ -472,7 +802,13 @@ def check_correlation_exposure(new_pair, new_type):
 
     # 3. Check USD Direction and Asset Class Saturation
     is_usd_pair = "USD" in new_pair
-    asset_class = "CRYPTO" if ("BTC" in new_pair or "SOL" in new_pair) else "FOREX"
+    # Clasificación mejorada para Portfolio Mixto 2026
+    if "BTC" in new_pair:
+        asset_class = "CRYPTO"
+    elif "XAU" in new_pair:
+        asset_class = "METALS"
+    else:
+        asset_class = "FOREX"
     
     class_direction_count = 0
     usd_longs = 0
@@ -488,7 +824,13 @@ def check_correlation_exposure(new_pair, new_type):
         p_type = p.type # 0=Buy, 1=Sell
         
         # Asset Class Direction Check
-        p_asset_class = "CRYPTO" if ("BTC" in symbol or "SOL" in symbol) else "FOREX"
+        if "BTC" in symbol:
+            p_asset_class = "CRYPTO"
+        elif "XAU" in symbol:
+            p_asset_class = "METALS"
+        else:
+            p_asset_class = "FOREX"
+            
         if p_asset_class == asset_class:
             is_buy = "BUY" in new_type or "BS" in new_type
             p_is_buy = (p_type == 0) # Simple map for demo, MT5 uses specific enums for orders
@@ -496,22 +838,37 @@ def check_correlation_exposure(new_pair, new_type):
                 class_direction_count += 1
                 
         if "USD" in symbol:
-            if p_type == 0: usd_shorts += 1
-            else: usd_longs += 1
+            # Phase 4 Logic Hardening: Distinguish Base vs Quote USD
+            is_usd_base = symbol.startswith("USD")
+            if is_usd_base:
+                if p_type == 0: usd_longs += 1 # Buying USDCAD = Buying USD
+                else: usd_shorts += 1
+            else:
+                if p_type == 0: usd_shorts += 1 # Buying EURUSD = Selling USD
+                else: usd_longs += 1
              
     # 4. Apply Advanced Filters
-    if class_direction_count >= 2:
-        print(f"🔗 ASSET CLASS SATURATION: Already 2 trades in same direction for {asset_class}. Blocking {new_pair}.")
+    if class_direction_count >= 3: # Relaxed from 2 to 3 for Full Activation
+        print(f"🔗 ASSET CLASS SATURATION: Already 3 trades in same direction for {asset_class}. Blocking {new_pair}.")
         return False
 
     # Evaluate New Trade USD Correlation
     if is_usd_pair:
-        if "BUY" in new_type or "BS" in new_type: # Sell USD
-            if usd_shorts >= 2:
+        new_is_buy = "BUY" in new_type or "BS" in new_type
+        new_is_usd_base = new_pair.startswith("USD")
+        
+        # Determine if new trade is Buying or Selling USD
+        if new_is_usd_base:
+            is_selling_usd = not new_is_buy
+        else:
+            is_selling_usd = new_is_buy
+            
+        if is_selling_usd:
+            if usd_shorts >= 3: # Aumentado de 2 a 3 para Portfolio Mixto where 5/5 assets have USD
                 print(f"🔗 CORRELATION FILTER: Too many USD Shorts ({usd_shorts}). Blocking {new_pair}.")
                 return False
-        else: # Buy USD
-            if usd_longs >= 2:
+        else:
+            if usd_longs >= 3:
                 print(f"🔗 CORRELATION FILTER: Too many USD Longs ({usd_longs}). Blocking {new_pair}.")
                 return False
             
@@ -553,27 +910,80 @@ def manage_active_trades(bot_brain):
             atr = 0.002 # Fallback
             
         # 🎯 DANIEL'S PARTIAL EXIT (1.3R): 50% Close + Move to BE
-        # 🟢 BUY Logic
+        # Phase 4 Logic Hardening: Stable R-Multiples
         entry_p = p.price_open
-        sl_p = p.sl
-        risk_pips = abs(entry_p - sl_p) / info.point if sl_p > 0 else 0
-        current_pips = (p.price_current - entry_p) / info.point
-        r_multiple = current_pips / (risk_pips + 0.00001) if p.type == 0 else (-current_pips / (risk_pips + 0.00001))
+        tp_p = p.tp
         
-        # Check if already partialled (Using comment or local state? Using comment "PARTIAL" is safer)
-        is_partialed = "PARTIAL" in p.comment or p.volume < (p.volume_initial if hasattr(p, 'volume_initial') else p.volume)
+        # Calculate Initial Risk (Iron Shield: Query History)
+        initial_risk_pips = get_initial_risk_pips(p.ticket, symbol, entry_p, info.point)
+        
+        if not initial_risk_pips:
+            # Fallback for manual trades or missing history: Estimate from TP
+            tp_dist_pips = abs(tp_p - entry_p) / info.point if tp_p > 0 else (p.price_current * 0.003 / info.point)
+            initial_risk_pips = tp_dist_pips / 1.5
+            
+        if initial_risk_pips < 1.0: initial_risk_pips = 10.0 # Fallback
+        
+        current_pips = (p.price_current - entry_p) / info.point
+        r_multiple = current_pips / initial_risk_pips if p.type == 0 else (-current_pips / initial_risk_pips)
+        
+        # --- CORRECCIÓN #2: TIEMPO MÁXIMO DE TRADE (Armonía 2026) ---
+        # 72h para Forex. 96h para BTCUSD (mercado 24/7 y ciclos distintos).
+        MAX_TRADE_HOURS = 96.0 if symbol == "BTCUSD" else 72.0
+        MIN_R_TO_SKIP_BE = 0.5  # Si ya ganó más de esto, no forzamos BE
+        duration_hours = (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
+
+        if duration_hours > MAX_TRADE_HOURS and r_multiple < MIN_R_TO_SKIP_BE:
+            # Calcular si el SL ya está en BE o mejor (no volver a moverlo)
+            be_offset_points = max(10, info.trade_stops_level + 5)
+            be_price = entry_p + (be_offset_points * info.point) if p.type == 0 else entry_p - (be_offset_points * info.point)
+            sl_already_at_be = (p.type == 0 and p.sl >= be_price) or (p.type == 1 and p.sl <= be_price and p.sl > 0)
+
+            if not sl_already_at_be:
+                logger.warning(f"⏰ TIEMPO MAX ({duration_hours:.1f}h): {symbol} #{p.ticket} no ha llegado a 0.5R ({r_multiple:.2f}R). Moviendo SL a Break-Even.")
+                sl_request = {
+                    "action": mt5_client.TRADE_ACTION_SLTP,
+                    "symbol": symbol,
+                    "sl": float(be_price),
+                    "tp": float(p.tp),
+                    "position": p.ticket
+                }
+                result = mt5_client.order_send(sl_request)
+                if result and result.retcode == mt5_client.TRADE_RETCODE_DONE:
+                    logger.info(f"✅ TIEMPO MAX: SL de {symbol} movido a BE ({be_price:.5f}).")
+                    try:
+                        if bot.enabled:
+                            bot.send_message(
+                                f"⏰ *TIEMPO MAX ACTIVO*\n"
+                                f"Par: `{symbol}` | Ticket: `#{p.ticket}`\n"
+                                f"Duración: {duration_hours:.1f}h | R actual: {r_multiple:.2f}R\n"
+                                f"Acción: _SL movido a Break-Even ({be_price:.5f})_"
+                            )
+                    except: pass
+                else:
+                    logger.error(f"❌ TIEMPO MAX: No se pudo mover SL de {symbol}. Código: {result.retcode if result else 'None'}")
+
+        # Check if already partialled (Phase 3 Fix: Include MFE Sniper tag)
+        is_partialed = "PARTIAL" in p.comment or "MFE" in p.comment or "SNIPER" in p.comment
+        if hasattr(p, 'volume_initial') and p.volume < p.volume_initial:
+            is_partialed = True
 
         # 🎯 MFE SNIPER (Surgical Phase): Manage partials before 1.3R
         if SNIPER_ENABLED and sniper_manager and not is_partialed:
-            # Use current H1 dataframe built for ATR
-            action = sniper_manager.process_position(p, info, df)
+            # Use current H1 dataframe built for ATR, pass mt5_client for MFE scanning
+            action = sniper_manager.process_position(p, info, df, mt5_client=mt5_client)
             
             # Baseline compatibility: Also trigger if 1.3R reached (Safety net)
             if action == "PARTIAL" or r_multiple >= 1.3:
                 reason = "AI SNIPER" if action == "PARTIAL" else "SAFETY 1.3R"
                 print(f"🎯 PARTIAL EXIT TRIGGERED ({reason}): Closing 50% of {symbol} (#{p.ticket}).")
-                partial_vol = round(p.volume / 2.0, 2)
-                if partial_vol < info.volume_min: partial_vol = p.volume
+                partial_vol = p.volume / 2.0
+                
+                # Volume Hardening
+                if info.volume_step > 0:
+                    partial_vol = round(partial_vol / info.volume_step) * info.volume_step
+                if partial_vol < info.volume_min: partial_vol = p.volume # Full close if below min
+                partial_vol = round(partial_vol, 2)
                 
                 # Close 50%
                 tick = mt5_client.symbol_info_tick(symbol)
@@ -585,12 +995,13 @@ def manage_active_trades(bot_brain):
                     "position": p.ticket,
                     "price": tick.bid if p.type == 0 else tick.ask,
                     "comment": f"MFE SNIPER {reason}",
-                    "type_filling": mt5_client.ORDER_FILLING_IOC,
+                    "type_filling": get_filling_mode(info),
                 }
                 mt5_client.order_send(close_request)
                 
-                # Move to BE
-                new_sl = entry_p + (10 * info.point) if p.type == 0 else entry_p - (10 * info.point)
+                # Move to BE (Dynamic Offset Hardening)
+                be_offset_points = max(10, info.trade_stops_level + 5)
+                new_sl = entry_p + (be_offset_points * info.point) if p.type == 0 else entry_p - (be_offset_points * info.point)
                 sl_request = {
                     "action": mt5_client.TRADE_ACTION_SLTP,
                     "symbol": symbol,
@@ -601,7 +1012,6 @@ def manage_active_trades(bot_brain):
                 mt5_client.order_send(sl_request)
                 
                 try:
-                    bot = TelegramBot()
                     if bot.enabled:
                         bot.send_message(f"🎯 *PARTIAL EXIT ({reason})*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% + SL moved to BE_")
                 except: pass
@@ -620,10 +1030,10 @@ def manage_active_trades(bot_brain):
             # We already have info and df (via get_mt5_data call might be needed if manage_active_trades doesn't have it)
             # Actually manage_active_trades has current H1 data in 'df' (calculated for ATR)
             if 'df' in locals() and not df.empty:
-                action = rl_manager.process_position(p, info, df)
+                action = rl_manager.process_position(p, info, df, mt5_client=mt5_client)
                 if action == "MOVE":
-                    # Move SL by 0.5R
-                    new_sl = p.sl + (risk_pips * 0.5 * info.point) if p.type == 0 else p.sl - (risk_pips * 0.5 * info.point)
+                    # Move SL by 0.5R (Phase 5 NameError Fix: use initial_risk_pips)
+                    new_sl = p.sl + (initial_risk_pips * 0.5 * info.point) if p.type == 0 else p.sl - (initial_risk_pips * 0.5 * info.point)
                     sl_request = {
                         "action": mt5_client.TRADE_ACTION_SLTP,
                         "symbol": symbol,
@@ -644,11 +1054,10 @@ def manage_active_trades(bot_brain):
                         "position": p.ticket,
                         "price": tick.bid if p.type == 0 else tick.ask,
                         "comment": "RL AGENT CLOSE",
-                        "type_filling": mt5_client.ORDER_FILLING_IOC,
+                        "type_filling": get_filling_mode(info),
                     }
                     mt5_client.order_send(close_request)
                     try:
-                        bot = TelegramBot()
                         if bot.enabled:
                             bot.send_message(f"🤖 *RL AGENT CLOSE*\nPair: `{symbol}`\nAction: _Dynamic Close for profit capture_")
                     except: pass
@@ -685,7 +1094,6 @@ def manage_active_trades(bot_brain):
                     }
                     mt5_client.order_send(request)
                     try:
-                        bot = TelegramBot()
                         if bot.enabled:
                             bot.send_message(f"🚨 *AI GUARDIAN CLOSE*\nTicket: `{ticket}`\nReason: _{reason}_")
                     except: pass
@@ -774,12 +1182,9 @@ def main():
         except Exception as e:
             print(f"⚠️ Balance Sync Failed: {e}")
     
-    # Telegram Startup
-    try:
-        bot = TelegramBot()
-        if bot.enabled:
-            bot.send_message("🦖 *HIVE V5 ALL-STARS LIVE* 🟢\nLoaded Top 11 Pairs.\nScanning for Daily Golden Setups...")
-    except: pass
+    # 0. Telegram Startup
+    if bot.enabled:
+        bot.send_message("🦖 *HIVE V5 ALL-STARS LIVE* 🟢\nSuper-Swarm Active (26 Assets)\nScanning for SMC & Fractal Setups...")
     global last_health_check, gatekeeper_agent
     
     # Initialize Gatekeeper
@@ -856,7 +1261,6 @@ def main():
                                 f"{pos_summary}"
                             )
                             
-                            bot = TelegramBot()
                             if bot.enabled: 
                                 bot.send_message(msg)
                                 logger.info("💓 Pulse Sent to Telegram")
@@ -867,7 +1271,8 @@ def main():
             try:
                 manage_active_trades(bot_brain)
             except Exception as e:
-                logger.error(f"Guardian Error: {e}")
+                import traceback
+                logger.error(f"Guardian Error: {e}\n{traceback.format_exc()}")
             
             timestamp_str = datetime.now().strftime('%H:%M:%S')
             
@@ -913,7 +1318,6 @@ def main():
                     warn_msg = f"🛑 AI GUARDIAN: Daily Loss Limit Hit (${daily_pnl:.2f}). Signals disabled for 1 hour."
                     print(f"\n{warn_msg}")
                     try:
-                        bot = TelegramBot()
                         if bot.enabled: bot.send_message(warn_msg)
                     except: pass
                     circuit_breaker_cooldown = time.time() + 3600 # 1 hour
@@ -957,18 +1361,18 @@ def main():
                             logger.warning(f"🚫 [SOFT BLOCKED] {pair} hit symbol loss limit (${sym_pnl:.2f} < ${sym_limit:.2f})")
                             continue
                             
-                        logger.info(f"🔍 [1/5] SIGNAL FOUND: {pair} ({'BUY' if sig==1 else 'SELL'})")
+                        logger.info(f"🔍 [1/5] SIGNAL: {pair} | {'BUY' if sig==1 else 'SELL'} | Str: {strategy}")
                         # 1. HIVE V5 Technical Filters
                         adx_val = row['adx']
                         try:
                             returns = data['close'].pct_change()
                             current_vol = (returns.rolling(24).std() * 1000).iloc[-1]
                         except: current_vol = 20.0
-                        
-                        # Relaxed from 20/16 to 15/18 as per analysis
-                        if not (adx_val > 15 and current_vol < 18): 
-                            logger.info(f"🚫 [2/5] HIVE REJECTED: {pair} (ADX={adx_val:.1f}, Vol={current_vol:.1f})")
-                            continue 
+
+                        # Adjusted global filter to allow FRACTAL Probing (ADX > 10). 
+                        if not (adx_val > 10 and current_vol < 20):
+                            logger.info(f"🚫 [2/5] HIVE REJECTED: {pair} (ADX={adx_val:.1f} <10 o Vol={current_vol:.1f} >=20)")
+                            continue
                         
                         logger.info(f"✅ [2/5] HIVE PASSED: {pair} (ADX={adx_val:.1f}, Vol={current_vol:.1f})")
 
@@ -1015,16 +1419,34 @@ def main():
                                     )
                                     
                                     # Phase 29: Per-symbol surgical discipline
-                                    thresholds = {"EURUSD": 0.45, "GBPUSD": 0.65}
-                                    pair_threshold = thresholds.get(pair, 0.85)
+                                    # Calibración 2026: Forex (0.65), Gold (0.70), BTC (0.75)
+                                    thresholds = {
+                                        "EURUSD": 0.65, 
+                                        "GBPUSD": 0.65, 
+                                        "USDJPY": 0.65,
+                                        "XAUUSD": 0.70,
+                                        "BTCUSD": 0.75
+                                    }
+                                    pair_threshold = thresholds.get(pair, 0.75)
 
                                     if ml_risk_score > pair_threshold: 
-                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (Elite Limit {pair_threshold})")
-                                        continue
+                                        logger.warning(f"🛑 [5/7] ML BLOCKED: {pair} Risk={ml_risk_score:.2f} (Surgical Limit {pair_threshold})")
+                                        if "FRACTAL" not in strategy: 
+                                            continue
+                                        else:
+                                            logger.info(f"🧬 FRACTAL OVERRIDE: ML Block ignored for PROBING mode.")
                                     
-                                    if bayesian_mult <= 0:
+                                    if bayesian_mult <= 0 and "FRACTAL" not in strategy:
                                         logger.warning(f"⚖️ [5/7] ORACLE SKIP: {pair} Non-asymmetric edge (f=0).")
                                         continue
+
+                                    # Phase 3 Improvement: Bayesian Floor
+                                    # If confidence is > 0.75 and in TRENDING regime, don't allow < 1.0x unless f=0
+                                    if adx_val > 25 and row['rsi'] > 50 and stop_hunt_model:
+                                        # (Simple heuristic check for strong trend)
+                                        if bayesian_mult > 0 and bayesian_mult < 1.0 and prob_success > 0.75:
+                                            bayesian_mult = 1.0
+                                            logger.info(f"🏛️ BAYESIAN FLOOR: Upgrading mult to 1.0x (Strong Trend detected)")
 
                                     logger.info(f"🏦 [5/7] ORACLE CALIBRATED: {pair} Prob={prob_success:.2f} | Mult={bayesian_mult:.2f}x")
                                 except Exception as e:
@@ -1057,19 +1479,64 @@ def main():
                         avg_atr = data['atr'].mean()
                         base_risk = calculate_institutional_risk(current_capital, daily_start, equity, current_atr, avg_atr, RISK_PER_TRADE)
                         
-                        # Apply Probabilistic Sizing: Adjust by confidence, regime and bayesian conviction
+                        # Default RR for all strategies
+                        RR_TARGET = 1.5
+                        
+                        # Apply Probabilistic Sizing
                         regime_multiplier = 1.0 if regime == "TRENDING" else 0.75
                         RISK_APPLIED = base_risk * confidence_factor * regime_multiplier * bayesian_mult
                         
-                        RR_TARGET = 1.5
-                        print(f"📉 DYNAMIC RISK: {RISK_APPLIED*100:.3f}% | Trigger: {pair} {order_type}")
-                        hive_tag = "🌟 GOLDEN SNIPER (H1)"
+                        # --- UNIVERSAL RISK CONFIGURATION (Phase 26) ---
+                        # All strategies use 0.4% risk calculation (Munición Pesada)
                         
-                        # Stops
+                        # Stops calculation
                         current_atr = row['atr']
                         current_price = row['close']
-                        sl_dist = current_atr * 2.0
-                        tp_dist = sl_dist * RR_TARGET
+                        
+                        if "FRACTAL ETA" in strategy:
+                            # GHOST SNIPER: Surgical Dynamic Floor Logic
+                            pip_size = 0.0001 if ("JPY" not in pair and "XAU" not in pair and "BTC" not in pair) else (0.01 if "JPY" in pair else 1.0)
+                            if "XAUUSD" in pair: pip_size = 1.0 
+                            if "BTCUSD" in pair: pip_size = 10.0
+                            
+                            s_info = mt5_client.symbol_info(symbol)
+                            s_tick = mt5_client.symbol_info_tick(symbol)
+                            
+                            # 1. Base Strategy SL (3 Pips)
+                            sl_dist_base = 3.0 * pip_size
+                            
+                            # 2. Broker Stops Level (Safety Floor)
+                            stops_level_dist = 0.0
+                            if s_info:
+                                stops_level_dist = s_info.trade_stops_level * s_info.point
+                                
+                            # 3. Live Spread Buffer (Market Floor)
+                            spread_dist = 0.0
+                            if s_tick:
+                                spread_dist = (s_tick.ask - s_tick.bid) * 1.5 # 50% buffer on spread for safety
+                                
+                            # COMBINE: The "Technical Floor" is the highest restriction
+                            sl_dist = max(sl_dist_base, stops_level_dist, spread_dist)
+                            
+                            if sl_dist > sl_dist_base:
+                                logger.info(f"🛡️ GHOST SNIPER: SL adjusted to Technical Floor: {sl_dist:.5f} (Base was {sl_dist_base:.5f})")
+                            
+                            # 4. Project 1:5 RR from the dynamic technical floor
+                            tp_dist = sl_dist * 5.0
+                            
+                            logger.info(f"👻 GHOST SNIPER SURGICAL: SL={sl_dist:.5f} / TP={tp_dist:.5f} (Ratio 1:5)")
+                        else:
+                            # Multiplicador ATR calibrado por instrumento:
+                            if pair == "BTCUSD":
+                                atr_multiplier = 1.2
+                            elif pair == "XAUUSD":
+                                atr_multiplier = 1.5
+                            else:
+                                atr_multiplier = 2.0
+                            sl_dist = current_atr * atr_multiplier
+                            tp_dist = sl_dist * RR_TARGET
+                        
+                        logger.info(f"📏 SL CALC: {pair} | ATR={current_atr:.4f} | SL_Dist={sl_dist:.4f}")
                         
                         if sig == 1:
                             sl = current_price - sl_dist
@@ -1088,28 +1555,31 @@ def main():
                         sl_diff = abs(current_price - sl)
                         risk_usd = current_capital * RISK_APPLIED 
                         
-                        # LOT SIZE CALCULATION
-                        lot_str = "0.01 Lots"
-                        execution_volume = 0.01
-                        
-                        if "USD" in pair and "BTC" not in pair and "SOL" not in pair:
-                            sl_pips = sl_diff * 10000
-                            if "JPY" in pair: sl_pips = sl_diff * 100
-                            if sl_pips > 0:
-                                lots = risk_usd / (sl_pips * 10.0)
-                            else: lots = 0
-                            lot_str = f"{lots:.2f} Lots"
-                            execution_volume = round(lots, 2)
+                        # UNIVERSAL LOT SIZE CALCULATION (Institutional Standard)
+                        s_info = mt5_client.symbol_info(symbol)
+                        if s_info and sl_diff > 0:
+                            # Formula: risk / (distance_in_ticks * tick_value)
+                            tick_size = s_info.trade_tick_size
+                            tick_value = s_info.trade_tick_value 
                             
-                        elif "BTC" in pair or "SOL" in pair:
-                            if sl_diff > 0:
-                                units = risk_usd / sl_diff
-                            else: units = 0
-                            lot_str = f"{units:.2f} Coins"
-                            execution_volume = round(units, 2)
+                            if tick_size > 0 and tick_value > 0:
+                                lots = risk_usd / ((sl_diff / tick_size) * tick_value)
+                                execution_volume = round(lots, 2)
+                                
+                                # Bounds Check
+                                if execution_volume < s_info.volume_min: execution_volume = s_info.volume_min
+                                if execution_volume > s_info.volume_max: execution_volume = s_info.volume_max
+                                
+                                lot_str = f"{execution_volume:.2f} Lots"
+                            else:
+                                execution_volume = 0.01
+                                lot_str = "0.01 (Fallback)"
+                        else:
+                            execution_volume = 0.01
+                            lot_str = "0.01 (Internal Error)"
                         
                         # Send Alert
-                        msg = (f"🚀 *HIVE V5 SIGNAL* 🚀\n"
+                        msg = (f"🚀 *HIVE V5 SIGNAL* ({strategy}) 🚀\n"
                                f"Pair: *{pair}*\n"
                                f"Action: *{order_type}*\n"
                                f"Price: *{current_price:.4f}*\n"
@@ -1153,12 +1623,6 @@ def main():
                                     
                                     gate_msg = f"🛡️ GATEKEEPER: {'ACCEPT' if gk_action==1 else 'REJECT'} ({gk_conf:.2f}) | Fts: Slope={gk_slope_norm:.2f} Vol={gk_vol:.1f}"
                                     logger.info(gate_msg)
-                                    
-                                    # Ensure bot instance exists
-                                    try: 
-                                        bot = TelegramBot() 
-                                    except: 
-                                        class bot: enabled=False
 
                                     if gk_action == 0:
                                         if GATEKEEPER_MODE == "ACTIVE":
@@ -1174,40 +1638,37 @@ def main():
                         if not gk_signal_valid:
                             continue
 
+                        # --- 🔴 CIRCUIT BREAKER CHECK (Dinámico 1% del capital) ---
+                        if MT5_CONNECTED:
+                            # El límite ahora escala con el crecimiento de la cuenta
+                            cb_limit = current_capital * 0.01  # 1% de la cuenta por par
+                            cb_stats = get_daily_pair_stats(pair, max_loss_usd=cb_limit)
+                            if cb_stats['is_blocked']:
+                                logger.warning(
+                                    f"🔴 CIRCUIT BREAKER: {pair} BLOQUEADO — {cb_stats['reason']} | "
+                                    f"Losses consecutivos: {cb_stats['consecutive_losses']} | "
+                                    f"Pérdida hoy: ${cb_stats['daily_loss_usd']:.2f}"
+                                )
+                                if bot.enabled:
+                                    bot.send_message(
+                                        f"🔴 *CIRCUIT BREAKER ACTIVE*\n"
+                                        f"Pair: `{pair}` — Signal blocked\n"
+                                        f"Reason: _{cb_stats['reason']}_\n"
+                                        f"Will resume at 00:00 UTC"
+                                    )
+                                continue  # Skip this trade, do not execute
+
                         # --- PHASE 71: AUTO EXECUTION ---
                         if MT5_CONNECTED:
                             logger.info(f"🦖 [5/5] EXECUTING ORDER: {pair} @ {current_price:.4f}")
-                            # Use 2.0 pip buffer for entry if desired, but strategy says BS/SS at current?
-                            # Actually pending order usually needs offset. 
-                            # If Buy Stop, Price > Current. 
-                            # The code calculated sl/tp based on 'current_price'.
-                            # If we send PENDING, it must be away from market.
-                            # HIVE V5 manual says "Pending Orders".
-                            # Let's assume we want to enter *at* the signal price (Retracement?)
-                            # Or capture the breakout.
-                            # For now, let's place it at 'current_price' which forces Market execution if immediate,
-                            # or use logic for buffer?
-                            # "PENDING_ORDER_BUFFER_PIPS = 2.0" exists.
-                            
+                            # Phase 4: Buffering is now handled inside execute_mt5_trade
                             entry_price = current_price
-                            if "BS" in order_type:
-                                entry_price += (PENDING_ORDER_BUFFER_PIPS * 0.0001)
-                                if "JPY" in pair: entry_price += (PENDING_ORDER_BUFFER_PIPS * 0.01)
-                            else:
-                                entry_price -= (PENDING_ORDER_BUFFER_PIPS * 0.0001)
-                                if "JPY" in pair: entry_price -= (PENDING_ORDER_BUFFER_PIPS * 0.01)
-
-                            # Recalculate SL/TP based on new entry? 
-                            # Or keep original structure? 
-                            # Strategy says: SL dist based on ATR. 
-                            # Let's keep distinct SL distance.
                             
                             # Execute
                             execute_mt5_trade(pair, order_type, entry_price, sl, tp, execution_volume)
 
-                        try:
-                            if 'bot' in locals() and bot.enabled: bot.send_message(msg)
-                        except: pass
+                        if bot.enabled:
+                            bot.send_message(msg)
                         
                 except Exception as e:
                     logger.error(f"Iter Error: {e}")
