@@ -1337,14 +1337,46 @@ def manage_active_trades(bot_brain):
                         bot.send_message(f"🎯 *PARTIAL EXIT ({reason})*\nPair: `{symbol}`\nTicket: `#{p.ticket}`\nAction: _Closed 50% + SL moved to BE_")
                 except: pass
         
-            # Gather data for AI Audit
-            active_summary.append({
-                'ticket': int(p.ticket),
-                'symbol': symbol,
-                'type': int(p.type),
-                'profit_pips': float(p.profit),
-                'duration_hours': (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
-            })
+        # 🐉 KAIDO INTELLIGENT TRAILING (The Emperor's Guard)
+        if "KAIDO" in p.comment:
+            new_target_sl = None
+            if r_multiple >= 3.0:
+                new_target_sl = entry_p + (initial_risk_pips * 2.0 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 2.0 * info.point)
+            elif r_multiple >= 2.0:
+                new_target_sl = entry_p + (initial_risk_pips * 1.0 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 1.0 * info.point)
+            elif r_multiple >= 1.2:
+                new_target_sl = entry_p + (initial_risk_pips * 0.5 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 0.5 * info.point)
+            elif r_multiple >= 0.6:
+                be_offset = max(10, info.trade_stops_level + 5)
+                new_target_sl = entry_p + (be_offset * info.point) if p.type == 0 else entry_p - (be_offset * info.point)
+            
+            if new_target_sl:
+                # Only move if it improves the SL
+                should_move = (p.type == 0 and new_target_sl > p.sl) or (p.type == 1 and (new_target_sl < p.sl or p.sl == 0))
+                if should_move:
+                    sl_request = {
+                        "action": mt5_client.TRADE_ACTION_SLTP,
+                        "symbol": symbol,
+                        "sl": float(new_target_sl),
+                        "tp": float(p.tp),
+                        "position": p.ticket
+                    }
+                    res_k = mt5_client.order_send(sl_request)
+                    if res_k and res_k.retcode == mt5_client.TRADE_RETCODE_DONE:
+                        logger.info(f"🐉 KAIDO TRAIL: Moved SL of {symbol} to lock profit level (R={r_multiple:.2f}).")
+                        try:
+                            if bot.enabled:
+                                bot.send_message(f"🐉 *KAIDO TRAIL ACTIVATED*\nPair: `{symbol}` | R: {r_multiple:.2f}\nAction: _SL moved to lock Profit stage_")
+                        except: pass
+
+        # Gather data for AI Audit
+        active_summary.append({
+            'ticket': int(p.ticket),
+            'symbol': symbol,
+            'type': int(p.type),
+            'profit_pips': float(p.profit),
+            'duration_hours': (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
+        })
             
         # RL INFINITE RUNNER (Phase 72)
         if RL_AGENT_ENABLED and rl_manager and is_partialed:
@@ -1997,6 +2029,38 @@ def main():
                                 if res_h and res_h.retcode != 10018:
                                     if bot.enabled:
                                         bot.send_message(f"🎭 *{hybrid_mode} HYBRID*\nPair: `{pair}`\nLogic: Hybrid Data Selection")
+
+                                # --- 5. Phase KAIDO (The High-Yield Emperor) ---
+                                # Arriesga 1% por operación. Combina el poder de ALFA y NÉMESIS.
+                                # Heredamos el 'hybrid_sig' y 'hybrid_mode' base.
+                                
+                                # Calcular lotaje al 1%
+                                acc_info = mt5_client.account_info()
+                                if acc_info:
+                                    risk_kaido = float(acc_info.balance) * 0.01
+                                    loss_per_lot = (sl_dist / symbol_info.trade_tick_size) * symbol_info.trade_tick_value if symbol_info.trade_tick_size > 0 else 1.0
+                                    lots_kaido = risk_kaido / loss_per_lot if loss_per_lot > 0 else 0.02
+                                    lots_kaido = round(lots_kaido, 2)
+                                else:
+                                    lots_kaido = 0.02
+
+                                kaido_variants = [
+                                    {"name": "KAIDO_15R", "rr": 1.5},
+                                    {"name": "KAIDO_20R", "rr": 2.0},
+                                    {"name": "KAIDO_30R", "rr": 3.0},
+                                    {"name": "KAIDO_TRAILING", "rr": 4.0} # Inicial largo, gestionado por BE
+                                ]
+
+                                for kv in kaido_variants:
+                                    k_tp_dist = sl_dist * kv["rr"]
+                                    k_sl = float(entry_price) - sl_dist if hybrid_sig == 1 else float(entry_price) + sl_dist
+                                    k_tp = float(entry_price) + k_tp_dist if hybrid_sig == 1 else float(entry_price) - k_tp_dist
+                                    k_order = "BS (Buy Stop)" if hybrid_sig == 1 else "SS (Sell Stop)"
+                                    
+                                    res_k = execute_mt5_trade(pair, k_order, float(entry_price), k_sl, k_tp, lots_kaido, comment=kv["name"])
+                                    if res_k and res_k.retcode != 10018:
+                                        if bot.enabled:
+                                            bot.send_message(f"🐉 *{kv['name']} RELEASING*\nPair: `{pair}`\nRR: {kv['rr']}:1 | Risk: 1% ($ {risk_kaido:.2f})")
 
                                 # --- MASSIVE DATA COLLECTION (MEGA GRID) ---
                                 dist_ema200 = (float(entry_price) - row['ema_200']) / row['ema_200']
