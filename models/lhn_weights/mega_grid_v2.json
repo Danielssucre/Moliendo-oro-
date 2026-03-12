@@ -1,0 +1,12 @@
+{
+    "ALFA": 0.5,
+    "EXPL": 0.25,
+    "NEME": 0.25,
+    "risk_modifiers": {
+        "ALFA": 0.8,
+        "EXPL": 0.93,
+        "NEME": 1.28
+    },
+    "version": "LHN_BETA_V2_BURNED_LEARNING",
+    "description": "Pesos ajustados tras asimilar la quema de cuenta. NEME reforzado."
+}

@@ -1,4 +1,5 @@
 
+import sys
 import os
 import subprocess
 import glob
@@ -27,14 +28,17 @@ def main():
         logger.info(f"🧠 Training specialist for {symbol}...")
         
         cmd = [
-            "python3", TRAIN_SCRIPT,
+            sys.executable, TRAIN_SCRIPT,
             "--symbol", symbol,
-            "--csv", ds_path
+            "--csv", ds_path,
+            "--disciplined"
         ]
         
         try:
             # Running with subprocess to keep logging clean and modular
-            result = subprocess.run(cmd, env=os.environ.copy())
+            env_copy = os.environ.copy()
+            env_copy["PYTHONPATH"] = os.getcwd()
+            result = subprocess.run(cmd, env=env_copy)
             if result.returncode == 0:
                 logger.info(f"✅ Specialist for {symbol} trained and saved.")
             else:

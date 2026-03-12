@@ -72,10 +72,13 @@ class RiskSizingEnv(gym.Env):
         if self.dd > 0.05:
             reward -= (self.dd * 1000.0) ** 1.5 
             
-        # Penalty for aggressive sizing on low probability (< 60%)
-        # In disciplined mode, we are even more conservative (< 70%)
-        prob_threshold = 0.70 if self.disciplined else 0.60
-        if mult > 1.0 and row['prob'] < prob_threshold:
+        # L-H-N Beta Sniper Proposal: Strong penalization for ranging markets
+        if mult > 0.0 and row['adx'] < 25.0:
+            reward -= 5.0 # Stop hunting prevention
+            
+        # Penalty for trading on low probability
+        prob_threshold = 0.75 if self.disciplined else 0.65
+        if mult > 0.0 and row['prob'] < prob_threshold:
             reward -= 5.0 if self.disciplined else 2.0 
             
         # Small reward for surviving (Stability incentive)

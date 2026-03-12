@@ -123,7 +123,7 @@ class RLTrailingManager:
         ema_9_slope = ema_9.diff(3).iloc[-1]
         
         # Current SL R
-        current_sl_r = (abs(sl_p - entry_p) / info.point) / risk_pips if sl_p != entry_p else 0
+        current_sl_r = (abs(sl_p - entry_p) / info.point) / initial_risk_pips if sl_p != entry_p else 0
         if p.type == 0 and sl_p < entry_p: current_sl_r = -current_sl_r # In loss or BE
         if p.type == 1 and sl_p > entry_p: current_sl_r = -current_sl_r
         

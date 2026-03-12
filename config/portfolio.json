@@ -1,9 +1,14 @@
 {
     "assets": {
-        "ETHUSD": "ETHUSD",
-        "SOLUSD": "SOLUSD",
-        "USDCHF": "USDCHF",
-        "XAUUSD": "XAUUSD"
+        "EURUSD": "EURUSD", "GBPUSD": "GBPUSD", "USDJPY": "USDJPY",
+        "AUDUSD": "AUDUSD", "USDCAD": "USDCAD", "NZDUSD": "NZDUSD",
+        "GBPJPY": "GBPJPY", "EURJPY": "EURJPY", "EURGBP": "EURGBP",
+        "AUDJPY": "AUDJPY", "CHFJPY": "CHFJPY", "CADJPY": "CADJPY",
+        "EURAUD": "EURAUD", "GBPAUD": "GBPAUD", "EURNZD": "EURNZD",
+        "NZDJPY": "NZDJPY", "USDCHF": "USDCHF",
+        "XAUUSD": "XAUUSD", "XAGUSD": "XAGUSD",
+        "BTCUSD": "BTCUSD", "ETHUSD": "ETHUSD", "SOLUSD": "SOLUSD"
     },
-    "updated_at": "2026-02-28 00:10:56.190132"
+    "updated_at": "2026-03-06T20:25:00Z",
+    "notes": "L-H-N MASSIVE GRID (22 PAIRS)"
 }
