@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
     from siliconmetatrader5 import MetaTrader5
-    mt5 = MetaTrader5(port=8001)
+    mt5 = MetaTrader5(port=18812)
     if not mt5.initialize():
         print(f"FAILED TO INITIALIZE: {mt5.last_error()}")
         sys.exit(1)
