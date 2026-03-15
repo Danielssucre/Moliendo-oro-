@@ -6,6 +6,7 @@ NANOBOT LIVE TRADING RUNNER (v2.0 Clean)
 - Risk: Dynamic Institutional w/ Kelly Sizing
 """
 import sys
+print("DEBUG: L1 - STARTING EXECUTION")
 import os
 import time
 import logging
@@ -27,6 +28,22 @@ except ImportError:
 
 from src.nanobot.ml.stop_hunt import StopHuntModel
 ML_ENABLED = True
+
+try:
+    from src.nanobot.strategies.skypie_enel import SkypieEnel
+    ENEL_ENGINE = SkypieEnel()
+    ENEL_ENABLED = True
+except ImportError:
+    ENEL_ENABLED = False
+    print("⚠️ Skypie-Enel strategy module not found.")
+
+try:
+    from src.nanobot.strategies.hunter_x import HunterX
+    HUNTER_X_ENGINE = HunterX()
+    HUNTER_X_ENABLED = True
+except ImportError:
+    HUNTER_X_ENABLED = False
+    print("⚠️ Hunter X strategy module not found.")
 
 try:
     from src.nanobot.kelly_sizing import BayesianEnsemble as BayesianBeliefEngine
@@ -122,6 +139,7 @@ logging.basicConfig(
 logger = logging.getLogger("NAANOBOT_FTMO")
 
 # --- VIRTUAL ORDER MANAGER (SHADOW GRID) ---
+print("DEBUG: L125 - GLOBAL SCOPE PROGRESSING")
 # --- REAL GRID MANAGER (L-H-N REAL EXPERIMENT) ---
 class RealGridManager:
     """Manages 40 real trades per signal (Thesis/Antithesis) to track real-market outcomes."""
@@ -347,37 +365,33 @@ class MT5ConnectionManager:
             try:
                 from siliconmetatrader5 import MetaTrader5
                 self.client = MetaTrader5(port=self.port)
-                # Credenciales extraídas del JSON para puentear el error -6 de autorización de Wine Native
-                import json
-                try:
-                    with open(DEFAULT_CREDS_PATH, "r") as f:
-                        config = json.load(f)
-                    
-                    c_login = config["mt5"]["account"]
-                    c_pass = config["mt5"]["password"]
-                    c_server = config["mt5"]["server"]
-                except:
+                login_info = self.creds or {}
+                c_login = int(login_info.get("account", 0))
+                c_pass = login_info.get("password", "")
+                c_server = login_info.get("server", "")
+                
+                if not c_login:
+                    print("⚠️ No credentials found. Using legacy fallback (FTMO)...")
                     c_login = 1521200226
                     c_pass = "Y9*VlN1c$9f*I?"
                     c_server = "FTMO-Demo2"
-                    
-                if self.client.initialize(path='C:\\Program Files\\MetaTrader 5\\terminal64.exe', portable=True, login=c_login, password=c_pass, server=c_server):
-                    # PERFORM LOGIN if creds exist
-                    if self.creds:
-                        acc = int(self.creds.get("account", 0))
-                        pw = self.creds.get("password", "")
-                        srv = self.creds.get("server", "")
-                        if acc and pw and srv:
-                            if self.client.login(acc, pw, srv):
-                                print(f"✅ LOGIN SUCCESSFUL: #{acc} ({srv})")
-                            else:
-                                print(f"❌ LOGIN FAILED: {self.client.last_error()}")
-                                # We continue anyway, as it might be already logged in manually
-                    
+                
+                path = 'C:\\Program Files\\MetaTrader 5\\terminal64.exe'
+                print(f"📡 INITIALIZING MT5 BRIDGE: {c_server} (#{c_login})...")
+                
+                # Try Path-based initialization
+                if self.client.initialize(path=path, portable=True, login=c_login, password=c_pass, server=c_server):
+                    print(f"✅ MT5 Initialized with Path (Portable)")
                     self.connected = True
+                # Try fallback (No Path)
+                elif self.client.initialize(login=c_login, password=c_pass, server=c_server):
+                    print(f"✅ MT5 Initialized via Fallback (No Path)")
+                    self.connected = True
+                
+                if self.connected:
                     MT5_CONNECTED = True
                     mt5_client = self.client
-                    print(f"🍏 SILICON MT5 CONNECTED: {self.client.version()}")
+                    print(f"🍏 MT5 CONNECTED: {self.client.version()}")
                     return True
                 else:
                     print(f"🍎 MT5 Connection Failed (Attempt {attempt+1}/{max_retries}): {self.client.last_error()}")
@@ -440,8 +454,8 @@ class MarketGuardian:
         
         if not is_friday: return
         
-        # 4:00 PM EST (16:00) is the start of the Smart Close window
-        if est_now.hour == 16:
+        # 3:45 PM EST (15:45) is the start of the Smart Close window
+        if (est_now.hour == 15 and est_now.minute >= 45) or est_now.hour == 16:
             positions = self.mt5.positions_get()
             if not positions: return
             
@@ -455,8 +469,8 @@ class MarketGuardian:
                     logger.info(f"🛡️ IRON SHIELD v2 (SMART): Closing {p.symbol} in profit (${profit:.2f}) before weekend.")
                     self._close_position(p)
                 
-                # HARD LIMIT: If it's after 4:15 PM, close regardless of P/L.
-                elif est_now.minute >= 15:
+                # HARD LIMIT: If it's after 3:55 PM (5 mins before close), close regardless of P/L.
+                elif (est_now.hour == 15 and est_now.minute >= 55) or est_now.hour == 16:
                     logger.warning(f"🛡️ IRON SHIELD v2 (HARD): Forced closure of {p.symbol} (${profit:.2f}) to prevent weekend GAP.")
                     self._close_position(p)
 
@@ -596,7 +610,17 @@ log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
 
 # Init ML
 stop_hunt_model = StopHuntModel() if ML_ENABLED else None
-last_retrain_date = None
+
+# --- POLIMATA INTEL PERSISTENCE ---
+POLIMATA_INTEL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config", "polimata_intel.json")
+polimata_intel = {"retrain_count": 0, "last_retrain_date": None}
+if os.path.exists(POLIMATA_INTEL_FILE):
+    try:
+        with open(POLIMATA_INTEL_FILE, 'r') as f:
+            polimata_intel = json.load(f)
+    except: pass
+
+last_retrain_date = polimata_intel.get("last_retrain_date")
 AI_RISK_FACTOR = 1.0 # Phase 14
 last_trade_audit = 0 # Phase 15: Intelligent Management
 last_risk_audit = 0 # Phase 16: System Synergy
@@ -687,12 +711,104 @@ def run_retrain_background():
         env_copy["PYTHONPATH"] = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         subprocess.run([sys.executable, script_path], check=True, env=env_copy)
         
+        # --- UPDATE INTEL ---
+        polimata_intel["retrain_count"] = polimata_intel.get("retrain_count", 0) + 1
+        polimata_intel["last_retrain_date"] = datetime.now().strftime("%Y-%m-%d")
+        with open(POLIMATA_INTEL_FILE, 'w') as f:
+            json.dump(polimata_intel, f, indent=4)
+            
+        logger.info(f"🧠 [LHN-THREAD] Polimata Training #{polimata_intel['retrain_count']} completed and persisted.")
         logger.info("🧠 [LHN-THREAD] Specialized models updated on disk. Synergizing with live engine...")
-        # Note: In a production environment, we'd signal the main thread to reload the models.
-        # For now, the next bot restart or a specific reload trigger will pick them up.
         
     except Exception as e:
         logger.error(f"❌ [LHN-THREAD] Auto-Retrain Background Task Failed: {e}")
+
+# --- [UNIVERSAL GUARDIAN v4.1: PROTOCOLO KAIZEN] ---
+class UniversalGuardian:
+    def __init__(self, initial_capital, logger=None):
+        self.initial_capital = initial_capital
+        self.peak_equity = initial_capital
+        self.logger = logger
+        self.daily_limit_pct = 3.0 # Max Daily Loss FTMO standard
+        self.last_atr_baseline = {} # {pair: baseline_atr}
+
+    def update(self, current_equity):
+        if current_equity > self.peak_equity:
+            self.peak_equity = current_equity
+
+    def get_scalar_multiplier(self, current_equity):
+        """Calcula el frenado escalar basado en la proximidad al límite diario."""
+        drawdown_pct = abs(min(0, (current_equity - self.initial_capital) / self.initial_capital * 100))
+        
+        if drawdown_pct >= 2.5: return 0.15 # Frenado extremo
+        if drawdown_pct >= 2.0: return 0.40 # Frenado fuerte
+        if drawdown_pct >= 1.0: return 0.80 # Desaceleración inicial
+        return 1.0
+
+    def get_profit_lock_floor(self, current_equity):
+        """Calcula el piso de protección basado en tramos de crecimiento."""
+        growth_pct = (current_equity - self.initial_capital) / self.initial_capital * 100
+        lock_pct = 0.0
+        
+        if growth_pct >= 10.0: lock_pct = 7.0
+        elif growth_pct >= 5.0: lock_pct = 3.0
+        elif growth_pct >= 2.0: lock_pct = 1.0
+        
+        if lock_pct > 0:
+            return self.initial_capital * (1 + (lock_pct / 100))
+        return None
+
+    def calculate_progressive_lot(self, current_balance, symbol_info, sl_dist, risk_pct=0.005):
+        """
+        Proposal V2: Progressive Micro-Sizing Protocol
+        Handles accounts < $500 with a stepped growth approach.
+        """
+        # 1. Base floor for all accounts
+        lot_min = symbol_info.volume_min if symbol_info.volume_min > 0 else 0.01
+        
+        # 2. Case: Micro Account (< $500)
+        if current_balance < 500:
+            if current_balance < 100:
+                # Survival Zone: Fixed minimum
+                return lot_min
+            else:
+                # Growth Zone: 0.01 per $100 of balance
+                # $150 -> 0.01, $250 -> 0.02, $350 -> 0.03
+                steps = int(current_balance / 100)
+                progressive_lot = steps * 0.01
+                return max(lot_min, round(progressive_lot, 2))
+        
+        # 3. Case: Standard Account (>= $500)
+        # Use mathematical risk-based sizing
+        tick_size = symbol_info.trade_tick_size
+        tick_value = symbol_info.trade_tick_value
+        
+        # Override for Skypie-Enel & Hunter X (1% risk) if balance is healthy or specified
+        final_risk = risk_pct
+        if "LHN_ENEL" in str(symbol_info.name) or "HUNTER_X" in str(symbol_info.name):
+            final_risk = 0.01 
+            
+        if tick_size > 0 and tick_value > 0 and sl_dist > 0:
+            risk_usd = current_balance * final_risk
+            loss_per_lot = (sl_dist / tick_size) * tick_value
+            lots_calculated = risk_usd / loss_per_lot if loss_per_lot > 0 else lot_min
+            return max(lot_min, round(lots_calculated, 2))
+        
+        return lot_min
+
+    def get_v_switch(self, pair, current_atr):
+        """Ajusta el lotaje si la volatilidad actual duplica el promedio."""
+        if pair not in self.last_atr_baseline:
+            self.last_atr_baseline[pair] = current_atr
+            return 1.0
+        
+        baseline = self.last_atr_baseline[pair]
+        if current_atr > (baseline * 1.5):
+            return baseline / current_atr # Proporción inversa
+        return 1.0
+
+# Initialize Universal Guardian
+guardian = None # Will be initialized inside main()
 
 def check_auto_retrain():
     """Check if it's Sunday and trigger background retraining"""
@@ -855,6 +971,29 @@ def analyze_hybrid_signal(df):
                 sig = 1; strategy = "FRACTAL BETA (Mean Reversion)"
             elif row['rsi'] > 70:
                 sig = -1; strategy = "FRACTAL BETA (Mean Reversion)"
+
+    # --- CRYPTO-SPECIALIZED: SKYPIE-ENEL (MCA Gold Clusters) ---
+    enel_passed = False
+    if sig != 0 and ENEL_ENABLED and any(c in symbol for c in ["BTC", "ETH", "SOL"]):
+        # Fetch actual ML risk score if available in indicators or use a fallback
+        # In a real run, this would be passed from a global model
+        mock_ml_prob = indicators.get('ml_prob', 0.75) 
+        if ENEL_ENGINE.evaluate(symbol, row, mock_ml_prob):
+            strategy = f"⚡ SKYPIE-ENEL ({strategy})"
+            enel_passed = True
+        else:
+            # If it's a crypto trade but fails Enel's Gold Cluster/Death Zone check, we abort
+            # logger.info(f"🚫 [Skypie-Enel] Setup blocked for {symbol} (Death Zone found)")
+            sig = 0; strategy = "None"
+
+    # --- FOREX-SPECIALIZED: HUNTER X (MCA Elite Associations) ---
+    if sig != 0 and HUNTER_X_ENABLED and not any(c in symbol for c in ["BTC", "ETH", "SOL"]):
+        mock_ml_prob = indicators.get('ml_prob', 0.82) 
+        if HUNTER_X_ENGINE.evaluate(symbol, row, mock_ml_prob):
+            strategy = f"🎯 HUNTER X ({strategy})"
+        else:
+            # Hunter X is strictly elite. If it fails, we keep standard HIVE but without the Hunter X badge.
+            pass
 
     if sig == 0:
         # FRACTAL GAMMA: Chaos Breakout (L3 H/L)
@@ -1445,6 +1584,7 @@ def manage_active_trades(bot_brain):
                     mt5_client.order_send(request_audit)
 
 def main():
+    print("DEBUG: L1545 - ENTERING MAIN")
     global current_capital, AI_RISK_FACTOR, last_trade_audit, last_risk_audit, circuit_breaker_cooldown, GATEKEEPER_MODE
     circuit_breaker_cooldown = 0
     
@@ -1485,7 +1625,9 @@ def main():
     circuit_breaker_cooldown = 0
     
     # 3. Connect MT5 (Late Init to prevent hang)
+    print("📡 INITIALIZING SILICON MT5 BRIDGE (AXI CHALLENGE)...")
     init_mt5()
+    print("✅ SILICON MT5 BRIDGE INITIALIZED.")
 
     # Initialize Risk Oracle (Quantum RL-Ready)
     risk_oracle = None
@@ -1566,7 +1708,7 @@ def main():
     while True:
         try:
             # Globals for components
-            global market_guardian, orchestrator, meta_selector
+            global market_guardian, orchestrator, meta_selector, guardian
             logger.debug("--- [STEP 0] Loop Start ---")
             
             # 0. Connection Watchdog
@@ -1575,102 +1717,115 @@ def main():
                 time.sleep(5)
                 continue
             logger.debug("--- [STEP 1] Connection Verified ---")
+
+            # Update account info EVERY iteration
+            acc = mt5_client.account_info()
+            if not acc:
+                logger.warning("⚠️ Failed to get account info. Skipping iteration.")
+                time.sleep(1)
+                continue
+                
+            equity = acc.equity
+            balance = acc.balance
+            daily_pnl = equity - INITIAL_CAPITAL
             
             # Check for AI Retraining
             check_auto_retrain()
 
+            # --- [UNIVERSAL GUARDIAN v4.1: SYSTEM PROTECTION] ---
+            if not guardian:
+                guardian = UniversalGuardian(INITIAL_CAPITAL, logger)
+            
+            guardian.update(equity)
+                
             # --- PHASE 26: TELEGRAM PULSE (Heartbeat) ---
             # PRIORITIZED: Move pulse to the very top to give user feedback immediately.
             if time.time() - last_pulse_time > 60: # Every 60 seconds
                 last_pulse_time = time.time()
                 try:
                     if MT5_CONNECTED:
-                        acc = mt5_client.account_info()
                         positions = mt5_client.positions_get()
                         
-                        if acc:
-                            equity = acc.equity
-                            balance = acc.balance
-                            daily_pnl = equity - INITIAL_CAPITAL
-                            # --- CINTURÓN DE SEGURIDAD PRO-BENEFIT (Mejora Daniel A) ---
-                            # Si hemos ganado dinero hoy, protegemos el 50% de ese crecimiento.
-                            peak_session_equity = max(getattr(bot, 'peak_session_equity', INITIAL_CAPITAL), equity)
-                            bot.peak_session_equity = peak_session_equity
+                        pos_summary = ""
+                        block_pnl = {"ALFA": 0.0, "EXPL": 0.0, "NEME": 0.0, "WINNER": 0.0, "OTHER": 0.0}
+                        if positions:
+                            for p in positions:
+                                swap = getattr(p, 'swap', 0.0)
+                                comm = getattr(p, 'commission', 0.0)
+                                profit = p.profit + swap + comm
+                                comment = getattr(p, 'comment', "")
+                                
+                                if "ALFA" in comment: block_pnl["ALFA"] += profit
+                                elif "EXPL" in comment: block_pnl["EXPL"] += profit
+                                elif "NEME" in comment: block_pnl["NEME"] += profit
+                                elif "WINNER" in comment: block_pnl["WINNER"] += profit
+                                else: block_pnl["OTHER"] += profit
+                                
+                                if abs(profit) > 10.0:
+                                    pos_summary += f"\n🔹 {p.symbol} {profit:+.2f}"
                             
-                            session_growth = peak_session_equity - INITIAL_CAPITAL
-                            if session_growth > 500: # Solo si hay al menos $500 de ganancia de margen
-                                safety_floor = peak_session_equity - (session_growth * 0.5)
-                                if equity < safety_floor:
-                                    logger.warning(f"🚨 [TRAILING SAFETY] Equity (${equity:,.2f}) hit 50% floor (${safety_floor:,.2f}). Emergency Exit!")
-                                    bot.send_message(f"🚨 *ESCAPE DE EMERGENCIA*: Se ha perdido el 50% del crecimiento del día. Cerrando todo para proteger ganancias.")
-                                    mt5_manager.close_all_positions()
-                                    time.sleep(3600 * 24) # Bloqueo 24h
-                            
-                            # --- MODO COSECHA PRO (Asegurar Pase de Cuenta) ---
-                            FTMO_TARGET = INITIAL_CAPITAL * 1.10 # $220,000
-                            if equity >= FTMO_TARGET:
-                                # Track peak equity since target was reached
-                                peak_equity_post_target = max(getattr(bot, 'peak_equity_post_target', equity), equity)
-                                bot.peak_equity_post_target = peak_equity_post_target
-                                
-                                # Extra profit above target
-                                extra_profit = peak_equity_post_target - FTMO_TARGET
-                                # Harvest threshold: We protect 50% of the extra profit + the target
-                                harvest_threshold = FTMO_TARGET + (extra_profit * 0.50)
-                                
-                                if equity < harvest_threshold:
-                                    logger.warning(f"🚜 [HARVEST MODE] Equity ${equity:,.2f} below threshold ${harvest_threshold:,.2f}. Cosechando Pase!")
-                                    bot.send_message(f"🚜 *MODO COSECHA ACTIVO*: Protegiendo el pase de la cuenta (${equity:,.2f}). Cerrando todas las posiciones para asegurar el objetivo.")
-                                    mt5_manager.close_all_positions()
-                                    time.sleep(3600 * 24) # Bloqueo para no entrar en retrocesos
-                            
-                            pos_summary = ""
-                            block_pnl = {"ALFA": 0.0, "EXPL": 0.0, "NEME": 0.0, "WINNER": 0.0, "OTHER": 0.0}
-                            if positions:
-                                for p in positions:
-                                    swap = getattr(p, 'swap', 0.0)
-                                    comm = getattr(p, 'commission', 0.0)
-                                    profit = p.profit + swap + comm
-                                    comment = getattr(p, 'comment', "")
-                                    
-                                    if "ALFA" in comment: block_pnl["ALFA"] += profit
-                                    elif "EXPL" in comment: block_pnl["EXPL"] += profit
-                                    elif "NEME" in comment: block_pnl["NEME"] += profit
-                                    elif "WINNER" in comment: block_pnl["WINNER"] += profit
-                                    else: block_pnl["OTHER"] += profit
-                                    
-                                    if abs(profit) > 10.0:
-                                        pos_summary += f"\n🔹 {p.symbol} {profit:+.2f}"
-                                
-                                block_text = (
-                                    f"\n🧬 *L-H-N BETA DISTRICTS*"
-                                    f"\n🟢 ALFA: ${block_pnl['ALFA']:+.2f}"
-                                    f"\n🔍 EXPL: ${block_pnl['EXPL']:+.2f}"
-                                    f"\n💀 NEME: ${block_pnl['NEME']:+.2f}"
-                                    f"\n🏆 WINNER: ${block_pnl['WINNER']:+.2f}"
-                                )
-                                pos_summary = block_text + pos_summary
-                            else:
-                                pos_summary = "\n💤 No Active Trades"
-                                
-                            regime_line = ""
-                            if orchestrator:
-                                regime_line = f"\n🎼 Régimen: {orchestrator.current_regime}"
-                                
-                            msg = (
-                                f"💓 *STATUS PULSE* 💓\n"
-                                f"💰 Bal: ${balance:,.2f}\n"
-                                f"📈 Eq:  ${equity:,.2f}\n"
-                                f"📊 PnL Session: ${daily_pnl:+.2f}\n"
-                                f"{regime_line}"
-                                f"{pos_summary}"
+                            block_text = (
+                                f"\n🧬 *L-H-N BETA DISTRICTS*"
+                                f"\n🟢 ALFA: ${block_pnl['ALFA']:+.2f}"
+                                f"\n🔍 EXPL: ${block_pnl['EXPL']:+.2f}"
+                                f"\n💀 NEME: ${block_pnl['NEME']:+.2f}"
+                                f"\n🏆 WINNER: ${block_pnl['WINNER']:+.2f}"
                             )
+                            pos_summary = block_text + pos_summary
+                        else:
+                            pos_summary = "\n💤 No Active Trades"
                             
-                            if bot.enabled: 
-                                bot.send_message(msg)
-                                logger.info("💓 Pulse Sent to Telegram")
+                        regime_line = ""
+                        if orchestrator:
+                            regime_line = f"\n🎼 Régimen: {orchestrator.current_regime}"
+                            
+                        msg = (
+                            f"💓 *STATUS PULSE* 💓\n"
+                            f"💰 Bal: ${balance:,.2f}\n"
+                            f"📈 Eq:  ${equity:,.2f}\n"
+                            f"📊 PnL Session: ${daily_pnl:+.2f}\n"
+                            f"{regime_line}"
+                            f"{pos_summary}"
+                        )
+                        
+                        if bot.enabled: 
+                            bot.send_message(msg)
+                            logger.info("💓 Pulse Sent to Telegram")
                 except Exception as e:
                     logger.error(f"Pulse Error: {e}")
+
+            # --- [UNIVERSAL GUARDIAN v4.1: ACTIVE PROTECTIONS - EVERY ITERATION] ---
+            # 1. Dynamic Profit Lock (Trinquete Escalonado)
+            profit_floor = guardian.get_profit_lock_floor(equity)
+            if profit_floor and equity < profit_floor:
+                logger.warning(f"🚨 [KAIZEN LOCK] Equity (${equity:,.2f}) hit dynamic floor (${profit_floor:,.2f}). Saving Profits!")
+                bot.send_message(f"🚨 *TRINQUETE DE BENEFICIO*: El Equity ha tocado el piso de protección escalonado. Cerrando todo para asegurar ganancias.")
+                mt5_manager.close_all_positions()
+                time.sleep(3600 * 4) # Cool-off 4h
+                continue
+
+            # 2. Hard Fuse Safety (Daily Limit)
+            hard_limit = INITIAL_CAPITAL * (1 - (guardian.daily_limit_pct * 0.75 / 100))
+            if equity < hard_limit:
+                logger.error(f"💀 [HARD FUSE] Equity near Max Daily Loss. Emergency Shutdown!")
+                bot.send_message(f"💀 *CORTE DE EMERGENCIA*: Se ha alcanzado el 75% del límite de pérdida diaria permisible. Apagado total del sistema.")
+                mt5_manager.close_all_positions()
+                time.sleep(3600 * 24)
+                continue
+
+            # 3. Harvest Mode (Pase de Cuenta)
+            FTMO_TARGET = INITIAL_CAPITAL * 1.10
+            if equity >= FTMO_TARGET:
+                peak_post = max(getattr(bot, 'peak_equity_post_target', equity), equity)
+                bot.peak_equity_post_target = peak_post
+                extra = peak_post - FTMO_TARGET
+                harvest_threshold = FTMO_TARGET + (extra * 0.50)
+                if equity < harvest_threshold:
+                    logger.warning(f"🚜 [HARVEST] Cosechando Pase de Cuenta en ${equity:,.2f}.")
+                    bot.send_message(f"🚜 *CONTRATO CUMPLIDO*: Protegiendo el pase de cuenta. Cosechando resultados.")
+                    mt5_manager.close_all_positions()
+                    time.sleep(3600 * 24)
+                    continue
             logger.debug("--- [STEP 2] Pulse Checked ---")
 
             # --- PHASE 75: IRON SHIELD v2 (Active Guardian) ---
@@ -1979,14 +2134,21 @@ def main():
                                 # --- DUAL SNIPER EXECUTION (Polimata vs Chameleon Benchmark) ---
                                 acc_info = mt5_client.account_info()
                                 if acc_info:
-                                    risk_usd = float(acc_info.balance) * 0.005 # Updated to 0.5% risk
-                                    tick_size = symbol_info.trade_tick_size
-                                    tick_value = symbol_info.trade_tick_value
-                                    if tick_size > 0 and tick_value > 0:
-                                        loss_per_lot = (sl_dist / tick_size) * tick_value
-                                        lots_calculated = risk_usd / loss_per_lot if loss_per_lot > 0 else 0.01
-                                    else:
-                                        lots_calculated = 0.02 # fallback
+                                    # --- [V2: PROGRESSIVE MICRO-SIZING] ---
+                                    # Standard Risk: 0.5% (from acc_info line)
+                                    risk_pct = 0.005 
+                                    lots_calculated = guardian.calculate_progressive_lot(
+                                        float(acc_info.balance), 
+                                        symbol_info, 
+                                        sl_dist, 
+                                        risk_pct=risk_pct
+                                    )
+                                    
+                                    # --- [KAIZEN SCALAR MULTIPLIER] ---
+                                    if guardian:
+                                        scalar = guardian.get_scalar_multiplier(equity)
+                                        v_switch = guardian.get_v_switch(pair, float(row['atr']))
+                                        lots_calculated = lots_calculated * scalar * v_switch
                                 else:
                                     lots_calculated = 0.02
 
@@ -2088,8 +2250,20 @@ def main():
                                 acc_info = mt5_client.account_info()
                                 if acc_info:
                                     risk_kaido = float(acc_info.balance) * 0.01
-                                    loss_per_lot = (sl_dist / symbol_info.trade_tick_size) * symbol_info.trade_tick_value if symbol_info.trade_tick_size > 0 else 1.0
+                                    
+                                    # Calculate loss per lot for risk sizing
+                                    tick_size = symbol_info.trade_tick_size
+                                    tick_value = symbol_info.trade_tick_value
+                                    loss_per_lot = (sl_dist / tick_size) * tick_value if tick_size > 0 and tick_value > 0 and sl_dist > 0 else 0
+                                    
                                     lots_kaido = risk_kaido / loss_per_lot if loss_per_lot > 0 else 0.02
+                                    
+                                    # --- [KAIZEN SCALAR MULTIPLIER (KAIDO)] ---
+                                    if guardian:
+                                        scalar = guardian.get_scalar_multiplier(equity)
+                                        v_switch = guardian.get_v_switch(pair, float(row['atr']))
+                                        lots_kaido = lots_kaido * scalar * v_switch
+                                    
                                     lots_kaido = round(lots_kaido, 2)
                                 else:
                                     lots_kaido = 0.02
@@ -2113,19 +2287,30 @@ def main():
                                             bot.send_message(f"🐉 *{kv['name']} RELEASING*\nPair: `{pair}`\nRR: {kv['rr']}:1 | Risk: 1% ($ {risk_kaido:.2f})")
 
                                 # --- MASSIVE DATA COLLECTION (MEGA GRID) ---
-                                dist_ema200 = (float(entry_price) - row['ema_200']) / row['ema_200']
-                                
-                                virtual_manager.register_signal_pool(
-                                    pair, entry_price, row['atr'], 
-                                    adx_val, row['rsi'], current_vol, prob_success, sig,
-                                    dist_ema200=dist_ema200,
-                                    source=source_tag
-                                )
-                                
-                                if bot.enabled and source_tag == "LHN":
-                                    bot.send_message(f"📡 *MEGA GRID SENSOR (25/25/25/25)*\nPair: `{pair}` | Grid: Balanced 40 variants.")
-                                elif bot.enabled:
-                                    bot.send_message(f"🧪 *EXPERIMENTAL TRIGGER*\nPair: `{pair}` | Precision Lab Grid (8 variants).")
+                                # Check if Mega Grid is enabled in config
+                                mega_grid_enabled = True
+                                try:
+                                    with open("config/trading_config.json", 'r') as f:
+                                        tmp_cfg = json.load(f)
+                                        mega_grid_enabled = tmp_cfg.get("mega_grid_enabled", True)
+                                except: pass
+
+                                if mega_grid_enabled:
+                                    dist_ema200 = (float(entry_price) - row['ema_200']) / row['ema_200']
+                                    
+                                    virtual_manager.register_signal_pool(
+                                        pair, entry_price, row['atr'], 
+                                        adx_val, row['rsi'], current_vol, prob_success, sig,
+                                        dist_ema200=dist_ema200,
+                                        source=source_tag
+                                    )
+                                    
+                                    if bot.enabled and source_tag == "LHN":
+                                        bot.send_message(f"📡 *MEGA GRID SENSOR (25/25/25/25)*\nPair: `{pair}` | Grid: Balanced 40 variants.")
+                                    elif bot.enabled:
+                                        bot.send_message(f"🧪 *EXPERIMENTAL TRIGGER*\nPair: `{pair}` | Precision Lab Grid (8 variants).")
+                                else:
+                                    logger.info(f"🛡️ [MEGA GRID OFF] Skipping data collection for {pair}.")
                                 
                                 last_signal_date[signal_key] = current_hour_tag
 
@@ -2180,7 +2365,7 @@ def nightly_polimata_retrain():
             time.sleep(3600)  # Sleep an hour before retrying on crash
 
 if __name__ == "__main__":
-    import threading
-    polimata_thread = threading.Thread(target=nightly_polimata_retrain, daemon=True)
-    polimata_thread.start()
+    # import threading
+    # polimata_thread = threading.Thread(target=nightly_polimata_retrain, daemon=True)
+    # polimata_thread.start()
     main()

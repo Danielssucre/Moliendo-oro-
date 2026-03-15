@@ -227,6 +227,9 @@
         }
     },
     "pairs": [
+        "BTCUSD",
+        "ETHUSD",
+        "SOLUSD",
         "EURUSD",
         "GBPUSD",
         "USDJPY",
