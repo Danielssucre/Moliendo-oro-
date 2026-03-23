@@ -10,8 +10,11 @@ class TelegramBot:
         self.enabled = False
         self.token = None
         self.chat_id = None
+        self.last_sent_time = 0
+        self.retry_after_until = 0
+        self.min_delay = 1.5  # Seconds between messages
         self._setup()
-        
+
     def _setup(self):
         """Load credentials from config."""
         tg_conf = self.config.api_keys.get("telegram", {})
@@ -23,12 +26,24 @@ class TelegramBot:
             logger.info("✅ Telegram Bot Configured.")
         else:
             logger.warning("⚠️ Telegram credentials missing in api_keys.json. Notifications disabled.")
-            
+
     def send_message(self, message: str):
-        """Send a plain text message."""
+        """Send a plain text message with throttling."""
         if not self.enabled:
             return
         
+        # Check if we are in a mandatory wait period from a previous 429
+        current_time = time.time()
+        if current_time < self.retry_after_until:
+            wait_time = self.retry_after_until - current_time
+            logger.warning(f"🚫 Telegram: Throttled. Waiting {wait_time:.1f}s more.")
+            return
+
+        # Enforce minimum delay between messages
+        elapsed = current_time - self.last_sent_time
+        if elapsed < self.min_delay:
+            time.sleep(self.min_delay - elapsed)
+
         url = f"https://api.telegram.org/bot{self.token}/sendMessage"
         payload = {
             "chat_id": self.chat_id,
@@ -36,15 +51,26 @@ class TelegramBot:
             "parse_mode": "Markdown"
         }
         
-        for attempt in range(3):
+        for attempt in range(2):
             try:
-                response = requests.post(url, json=payload, timeout=30)
+                response = requests.post(url, json=payload, timeout=15)
+                self.last_sent_time = time.time()
+                
                 if response.status_code == 200:
-                    break
+                    return True
+                
+                if response.status_code == 429:
+                    retry_after = response.json().get("parameters", {}).get("retry_after", 30)
+                    self.retry_after_until = time.time() + retry_after
+                    logger.error(f"❌ Telegram 429: Rate limited. Blocking for {retry_after}s.")
+                    return False
+                    
                 logger.error(f"Telegram Send Error (Attempt {attempt+1}): {response.text}")
             except Exception as e:
                 logger.error(f"Telegram Connection Error (Attempt {attempt+1}): {e}")
-            time.sleep(2)
+            
+            time.sleep(self.min_delay)
+        return False
 
     def send_signal(self, signal: dict):
         """Format and send a trading signal."""

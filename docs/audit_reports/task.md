@@ -1,0 +1,229 @@
+- [x] Hyper-Growth Simulation: 1 Year Projection ($27 to $100k) <!-- id: 29 -->
+- [x] Consolidate Unified Strategic Report (100k Master Plan) <!-- id: 32 -->
+- [x] Unified Documentation Consolidation (Master Journal) <!-- id: 33 -->
+    - [x] Inventory all loose documentation
+    - [x] Migrate Architecture, SOUL, and Results
+    - [x] Integrate Technical Recovery (P.A.N.I.C.)
+    - [x] Finalize "Diario Maestro" as single source of truth
+- [x] Crypto Data Analysis & Pattern Discovery (BTC, ETH, SOL) <!-- id: 34 -->
+    - [x] Perform unsupervised clustering (K-Means)
+    - [x] Execute MCA Categorical Analysis
+    - [x] Cross-Crypto Pattern Validation (ETH, SOL)
+    - [x] Global "Death Zone" Identification
+- [x] Implementing Skypie-Enel Crypto Bot (BTC, ETH, SOL) <!-- id: 37 -->
+    - [x] Design strategy module (Gold Cluster logic)
+    - [x] Integrate into HIVE V5 nomination
+    - [x] Configure 1% risk & specialized sizing
+    - [x] Verify execution on ETH/SOL
+- [x] Implementing Hunter X Forex Bot (Portfolio-Wide) <!-- id: 39 -->
+    - [x] Design Hunter X module (Elite vs Trap logic)
+    - [x] Integrate into HIVE V5 nomination
+    - [x] Configure 1% risk allocation
+    - [x] Documentation and Final Journal Update
+- [x] Hyper-Growth Simulation ($27 to $16,000 in 1 month) <!-- id: 45 -->
+- [x] Minimum Capital Simulation for $16k Target <!-- id: 46 -->
+- [x] Binance Integration & Skypie Deployment <!-- id: 48, 49, 50, 51 -->
+    - [x] Install python-binance in venv
+    - [x] Store API credentials in credentials.json
+    - [x] Create BinanceClient module (binance_client.py)
+    - [x] Verify live connection (SPOT, canTrade=True)
+    - [x] Integrate Skypie-Enel strategy with Binance execution layer
+    - [x] Telegram Notifications System for Binance
+- [x] Integrating Binance Monitoring into Dashboard <!-- id: 52 -->
+    - [x] Create BinanceService (backend)
+    - [x] Implement API endpoints (FastAPI)
+    - [x] Add Binance Terminal view (React)
+    - [x] Verify live trade execution and UI synchronization
+- [x] Updating Cluster & MCA Analysis (FTMO Data) <!-- id: 59 -->
+    - [x] Created analisis_clusters_forex.md
+    - [x] Created analisis_mca_forex.md
+    - [x] Integrated 'Trade Storm' data into system logic (Shadow Mode)
+- [x] Post-Mortem FTMO Analysis (Account 1512749983) <!-- id: 58 -->
+    - [x] Audited trade history and found 'Trade Storm' (243 trades)
+    - [x] Identified RealGridManager (L-H-N Beta) as the cause
+    - [x] Created Forensic Report with recommendations
+- [x] Enhancing MT5 Dashboard Monitoring <!-- id: 53 -->
+    - [x] Add live log viewer for Forexbot
+    - [x] Implement active positions extraction
+    - [x] Implement trade history visualization
+    - [x] Integrate into React Mission Dashboard
+- [x] Debugging MT5 Axi Connection <!-- id: 60 -->
+    - [x] Verified Axi credentials in config
+    - [x] Tested bridge connection with standalone script (Success: $27 balance)
+    - [x] Identify port mismatch in run_live.py (18812 vs 8001)
+    - [x] Fix connection logic in BotOrchestrator
+    - [x] Fix frontend property mismatch (positions_detail -> active_positions)
+    - [x] Fix backend mapping in main.py
+    - [x] Correct MT5 log path (dashboard_bot.log)
+    - [x] Resolve KeyError: 'daily_pnl' in MT5Service
+- [x] Mitigating Telegram Rate Limits <!-- id: 55 -->
+    - [x] Implement RateLimiter utility
+    - [x] Centralize notification logic in TelegramBot
+    - [x] Update strategy runners to use Throttler
+    - [x] Handle retry_after in API responses
+- [x] Fixing Binance Balance Mismatch <!-- id: 57 -->
+    - [x] Research current selling logic
+    - [x] Implement actual balance check before selling
+    - [x] Sanitize sell quantity with exchange precision
+- [x] Fixing Mega Grid Toggle & Configuration Path Mismatch <!-- id: 61 -->
+    - [x] Identify root cause of toggle failure (Path mismatch in main.py)
+    - [x] Update main.py to use absolute PROJECT_ROOT for config paths
+    - [x] Manually disable mega_grid_enabled in trading_config.json
+- [x] Fixing Bot "Disconnection" & Silent Loop Crashes <!-- id: 64 -->
+    - [x] Identify root cause (Iter Error & Hard Fuse sleep)
+    - [x] Fix undefined 'symbol' and 'indicators' variables in run_live.py
+    - [x] Adjust HARD FUSE sleep duration for small accounts
+    - [x] Verify continuous logging and loop stability
+- [x] Fixing Binance "Insufficient Balance" Error (v3 - Earn Recovery) <!-- id: 62 -->
+    - [x] Identify root cause (Assets in Flexible Savings 'LD' prefix)
+    - [x] Implement automated Simple Earn redemption
+    - [x] Fix module environment mismatch (venv)
+    - [x] Verify Take Profit execution with automated redemption
+- [x] Checking Axi (MT5) Account Balance (60220215) <!-- id: 66 -->
+    - [x] Identify account status in logs ($19.59 equity, Hard Fuse)
+    - [x] Verify real-time balance via MT5 direct query
+- [x] Designing Small Capital Strategy (Axi - $27) <!-- id: 70 -->
+    - [x] Define strategy lineup (Hunter X, Chameleon 2.0)
+    - [x] Configure hard selectivity filters for 0.01 lot floor
+    - [x] Update bot orchestrator for "Axi Profile"
+- [x] Verifying Kaido Strategy Lock <!-- id: 71 -->
+    - [x] Identify missing lock in Kaido execution block
+    - [x] Apply `not is_small_cap` condition to Kaido release
+    - [x] Cancel pending Kaido orders via MT5 Bridge
+- [x] Implement basket-level PnL tracking in `run_live.py` (shadow telemetry) <!-- id: 97 -->
+- [x] Verify `basket_theory.jsonl` generation and valid snapshots <!-- id: 97 -->
+- [x] EMERGENCY: Fix trade spamming loop (Error 10027 bypass) <!-- id: 98 -->
+- [x] Audit Binance bot performance and SL slippage reconciliation <!-- id: 99 -->
+- [x] Review and document Crypto Strategy Roadmap (MCA Gold Cluster) <!-- id: 100 -->
+- [x] Transition Binance to Polimata Core (10 Slots @ $5.5 min) <!-- id: 103 -->
+    - [x] Verify Polimata training data for BTC/ETH/SOL
+    - [x] Draft implementation plan for Polimata Binance Core
+    - [x] Create `run_polimata_binance.py`
+    - [x] Fix NOTIONAL filter failure (ceil rounding)
+- [x] Implementing Small Account Guardian Profile ($19 Survival) <!-- id: 72 -->
+    - [x] Reset `INITIAL_CAPITAL` to current live balance ($19.59)
+    - [x] Relax `HARD_FUSE` to 30% for small accounts
+    - [x] Update Telegram reporting for survival mode
+- [x] Implementing Concurrent Trade Limit (Axi - 5 trades) <!-- id: 73 -->
+    - [x] Fix `is_small_cap` scoping error
+    - [x] Implement active positions check and limit logic
+    - [x] Verify enforcement in logs
+- [x] Auditing System Performance (Forex & Binance) <!-- id: 74 -->
+    - [x] Gather balance and trade metrics
+    - [x] Analyze risk vs reward for both profiles
+    - [x] Generate Viability Report
+- [x] Simulating $1000 Capital Account (Axi) <!-- id: 75 -->
+    - [x] Run mathematical PnL projections
+    - [x] Compare survivability metrics ($1000 vs $60)
+    - [x] Generate Simulation Report
+- [x] Simulating $1000 Binance Account (Skypie-Enel) <!-- id: 76 -->
+    - [x] Run crypto-specific PnL projections
+    - [x] Analysis of compound interest at $1000 level
+    - [x] Generate Binance Simulation Report
+- [x] Auditing Binance Historical & Projected Performance <!-- id: 77 -->
+    - [x] Extract historical trade data and timing
+    - [x] Calculate actual realized vs unrealized PnL
+    - [x] Generate Comparative Projection Report ($60 vs $1000)
+- [x] Binance 30-Day Growth Simulation (Real Data) <!-- id: 78 -->
+    - [x] Quantify exact trade frequency (last 24h)
+    - [x] Run 30-day compound vs linear projection
+    - [x] Document potential monthly drawdown zones
+- [x] Credit Arbitrage Simulation (Bancolombia vs Bot) <!-- id: 81 -->
+    - [x] Research Bancolombia interest rates and cash advance fees
+    - [x] Calculate "Break-Even" point for the bot
+    - [x] Generate Debt vs. Profit Simulation Report
+- [x] Designing Safe Withdrawal Plan (Bank Priority) <!-- id: 82 -->
+    - [x] Draft "Interest Reserve" logic
+    - [x] Create implementation plan for Safe Withdrawal Mode
+    - [x] Integrate debt status tracking into Binance Bot code
+    - [x] Implement Telegram milestone notifications
+- [x] Auditing Axi (Forex) Critical Status <!-- id: 83 -->
+    - [x] Analyze current equity and active positions ($8.86 detected)
+    - [x] Evaluate "Survival Mode" effectiveness (Not viable due to lot floor)
+    - [x] Provide final recommendation on pausing Axi
+- [x] Extreme Survival Strategy (Axi - $8) <!-- id: 84 -->
+    - [x] Draft Extreme Survival implementation plan (No Hard Fuse + 1 Trade Limit)
+    - [x] Modify run_live.py for extreme selectivity and 1-trade limit
+    - [x] Verify enforcement in live logs
+- [x] Investigating Binance "Earn" Profit Leak <!-- id: 85 -->
+    - [x] Audit sell logic for Earn redemption
+    - [x] Implement forced redemption before any SELL order (TP, SL, Exit)
+    - [x] Recover USDT from Earn in every scan loop
+- [x] Forex "Harvest" Logic Audit <!-- id: 86 -->
+    - [x] Audit run_live.py for Harvest trigger points
+    - [x] Disable Harvest Mode for accounts < $100
+    - [x] Verify continuous operation in logs
+- [x] Auditing Binance Profitability & Discrepancies <!-- id: 87 -->
+    - [x] Extract trade history from logs
+    - [x] Reconcile balance with realized PnL (~$61.28 / +2.1%)
+    - [x] Identify technical discrepancies (Dust/Earn $0.01 limit)
+    - [x] Present financial report to user
+- [x] Auditing Axi "Extreme Survival" Performance <!-- id: 88 -->
+    - [x] Extract trade history and equity milestones
+    - [x] Calculate recovery % (+175% from $8.61 to $23.71)
+    - [x] Analyze impact of 1-trade limit and Harvest fix
+    - [x] Present Axi performance report to user
+- [x] Updating Trading Journal (Last 3 Days) <!-- id: 89 -->
+    - [x] Synthesize events (Axi Recovery, Binance Fixes, Bank Priority)
+    - [x] Update diario_de_trading.md
+- [x] Forensic Audit: Axi "Pending Order" Glitch <!-- id: 90 -->
+    - [x] Analyze code logic for pending orders vs. active limit
+    - [x] Trace log frequency of simultaneous activations
+    - [x] Document "Happy Accident" impact on PnL (+175% Gain)
+    - [x] Present forensic report to user
+- [x] Axi Performance Audit: Win-Rate, Profit-Factor & RR <!-- id: 91 -->
+    - [x] Extract full trade history from logs
+    - [x] Calculate Win Rate and Profit Factor
+    - [x] Calculate Sharpe Ratio and Average RR
+    - [x] Document audit in a formal report artifact
+- [x] Restricting XAUUSD, XAGUSD & Cryptos for Small Accounts (<100k) <!-- id: 92 -->
+    - [x] Research symbol filtering logic
+    - [x] Create implementation plan
+    - [x] Implement XAUUSD exclusion for INITIAL_CAPITAL < 100000
+    - [x] Verify restriction in live logs
+    - [x] Document in walkthrough.md
+- [x] Implementing Unique Symbol Lock (Extreme Survival) <!-- id: 93 -->
+    - [x] Research position/order check logic
+    - [x] Create implementation plan
+    - [x] Implement active+pending symbol check for accounts < 100k
+    - [x] Verify enforcement in logs
+    - [x] Document in walkthrough.md
+- [x] Adjusting Concurrency Limit (3 Trades) <!-- id: 95 -->
+    - [x] Update max_concurrent from 1 to 3
+    - [x] Verify total exposure limit in live logs
+    - [x] Update walkthrough.md
+- [x] Axi Symbol Lock Fix (Unique Symbol Integration) <!-- id: 104 -->
+- [x] Axi Process Cleanup (Single Instance Enforcement) <!-- id: 105 -->
+- [x] Telegram Notification Fix (Axi & Binance) <!-- id: 106 -->
+- [x] Dashboard Stabilization (Dynamic Capital Start) <!-- id: 108 -->
+- [x] Kaido Survive Implementation (Axi) <!-- id: 113 -->
+- [x] Weekly Basket Lock Simulation (Data Science) <!-- id: 118 -->
+- [x] Basket Profit Lock Implementation (Logic + Dashboard) <!-- id: 121 -->
+- [x] Dashboard UI Refactor & Toggle Logic Fix <!-- id: 122 -->
+- [x] Debugging Basket Lock Persistence & Input Lag <!-- id: 123 -->
+- [x] Implementation of Live Config Sync Logger <!-- id: 124 -->
+- [x] Fix Binance Notional Filter Error (ETHUSDT Exit) <!-- id: 125 -->
+- [x] Expansion of Forensic Report (Faqs & Optimization) <!-- id: 126 -->
+- [x] Unifying Algorithmic Journal & Final Commit <!-- id: 159 -->
+- [x] Institutional Scaling Matrix ($10k-$200k) <!-- id: 158 -->
+- [x] Conservative Weekly Payout Strategy <!-- id: 157 -->
+- [x] Funded Account Profit Projection <!-- id: 156 -->
+- [x] Prop Firm Challenge Simulation ($5,000) <!-- id: 155 -->
+- [x] Institutional Scaling Simulation ($5000) <!-- id: 154 -->
+- [x] White Paper Construction: Nanobot Polimata v2.0 <!-- id: 153 -->
+- [x] Deep System Architecture & Evolution Audit <!-- id: 152 -->
+- [x] Technical Architecture & Buy-Side Audit <!-- id: 151 -->
+- [x] Due Diligence: Technical & Financial Evaluation <!-- id: 150 -->
+- [x] Implementing Trailing Basket Protection <!-- id: 147 -->
+- [x] Comprehensive Forensic Audit (Mar 16 - Mar 23) <!-- id: 145 -->
+- [x] Strategic Growth Projection to $100 <!-- id: 144 -->
+- [x] Final Audit & Comparative Analysis (Last Hour) <!-- id: 142 -->
+- [x] Comparative Audit: Basket vs. Individual Execution <!-- id: 141 -->
+- [x] Compound Interest Forensic Audit <!-- id: 137 -->
+- [x] Implementing Basket Cooldown & Fix <!-- id: 136 -->
+- [x] Axi Account Audit (Pre-7:45 AM) <!-- id: 134 -->
+- [x] Analyzing Performance (March 22-23) <!-- id: 133 -->
+- [x] Auditing Axi "Survive" Symbols (Whitelist Verification) <!-- id: 132 -->
+- [x] Implementation of Tri-Asset Concentrated Allocation ($20 Split) <!-- id: 128 -->
+- [x] Implementation of Dynamic Capital Allocation ($ Equity / 3) <!-- id: 129 -->
+- [x] Implementation of Spot Growth Strategy (Concentration & Trailing) <!-- id: 127 -->

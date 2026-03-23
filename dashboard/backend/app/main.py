@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.models.schemas import BotConfig, BotStatus, TradeStats
+from app.models.schemas import BotConfig, BotStatus, TradeStats, BinanceStats, BasketLockConfig
 from app.services.bot_manager import BotManager
 from app.services.mt5_service import MT5Service
+from app.services.binance_service import BinanceService
 import os
 import json
 import re
@@ -24,6 +25,7 @@ app.add_middleware(
 
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/danielsuarezsucre/TRADING/trading_agent")
 mt5_service = MT5Service(PROJECT_ROOT)
+binance_service = BinanceService(PROJECT_ROOT)
 bot_manager = BotManager(PROJECT_ROOT, mt5_service=mt5_service)
 
 @app.get("/status", response_model=BotStatus)
@@ -78,7 +80,7 @@ async def get_signals():
 
 @app.post("/config", response_model=BotConfig)
 async def update_config(config: BotConfig):
-    config_path = os.path.join(os.getcwd(), "../../config/trading_config.json")
+    config_path = os.path.join(PROJECT_ROOT, "config/trading_config.json")
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
             full_config = json.load(f)
@@ -94,7 +96,7 @@ async def update_config(config: BotConfig):
 
 @app.post("/config/mega-grid")
 async def toggle_mega_grid(enabled: bool):
-    config_path = os.path.join(os.getcwd(), "../../config/trading_config.json")
+    config_path = os.path.join(PROJECT_ROOT, "config/trading_config.json")
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
             full_config = json.load(f)
@@ -106,21 +108,51 @@ async def toggle_mega_grid(enabled: bool):
             
     return {"status": "success", "mega_grid_enabled": enabled}
 
+@app.get("/api/basket-lock", response_model=BasketLockConfig)
+async def get_basket_lock():
+    config_path = os.path.join(PROJECT_ROOT, "config/basket_config.json")
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    return BasketLockConfig()
+
+@app.post("/api/basket-lock", response_model=BasketLockConfig)
+async def update_basket_lock(config: BasketLockConfig):
+    config_path = os.path.join(PROJECT_ROOT, "config/basket_config.json")
+    with open(config_path, 'w') as f:
+        json.dump(config.dict(), f, indent=4)
+    return config
+
 @app.post("/start")
 async def start_bot(config: BotConfig):
     # Update credentials if provided
     if config.mt5:
         creds_path = os.path.join(PROJECT_ROOT, "config/credentials.json")
         os.makedirs(os.path.dirname(creds_path), exist_ok=True)
+        
+        current_creds = {}
+        if os.path.exists(creds_path):
+            try:
+                with open(creds_path, 'r') as f:
+                    current_creds = json.load(f)
+            except: pass
+            
+        current_creds["mt5"] = config.mt5.dict()
+        
         with open(creds_path, 'w') as f:
-            json.dump({"mt5": config.mt5.dict()}, f, indent=4)
+            json.dump(current_creds, f, indent=4)
         
     # AUTOMATIC MT5 CONNECTION BEFORE BOT START
     logger.info("Auto-connecting MT5 before bot startup...")
     mt5_service.connect()
     
+    # 2. Start bot with real balance (Auto-Detect mode)
+    stats = mt5_service.get_account_stats()
+    balance = stats.get("balance", 100000) if stats else 100000
+    
     # Start bot
-    result = bot_manager.start_bot(capital=100000) # Default capital or from config
+    logger.info(f"🚀 Starting bot with detected capital: ${balance:.2f}")
+    result = bot_manager.start_bot(capital=balance)
     return result
 
 @app.post("/stop")
@@ -147,14 +179,22 @@ async def select_account(acc_data: dict):
         
     # Update credentials file
     creds_path = os.path.join(PROJECT_ROOT, "config/credentials.json")
+    
+    current_creds = {}
+    if os.path.exists(creds_path):
+        try:
+            with open(creds_path, 'r') as f:
+                current_creds = json.load(f)
+        except: pass
+
+    current_creds["mt5"] = {
+        "account": int(account),
+        "server": server,
+        "password": password or "" 
+    }
+    
     with open(creds_path, 'w') as f:
-        json.dump({
-            "mt5": {
-                "account": int(account),
-                "server": server,
-                "password": password or "" # Might be empty if already saved in MT5
-            }
-        }, f, indent=4)
+        json.dump(current_creds, f, indent=4)
     
     # Stop current bot if running
     bot_manager.stop_bot()
@@ -210,6 +250,9 @@ async def get_stats():
         margin_level = mt5_stats["margin_level"]
         daily_pnl = mt5_stats["daily_pnl"]
         active_trades = mt5_stats["active_trades"]
+        active_positions = mt5_stats.get("active_positions", [])
+        trade_history = mt5_stats.get("trade_history", [])
+        last_log_lines = mt5_stats.get("last_log_lines", [])
         
         # Total PnL from history
         from datetime import datetime, timedelta
@@ -227,6 +270,9 @@ async def get_stats():
         daily_pnl = 0.0
         active_trades = 0
         total_pnl = 0.0
+        active_positions = []
+        trade_history = []
+        last_log_lines = ["❌ MT5 Service disconnected or not responding"]
     
     # ... rest same ...
     model_files = glob.glob(os.path.join(PROJECT_ROOT, "models/*.zip"))
@@ -268,8 +314,15 @@ async def get_stats():
         "free_margin": free_margin,
         "margin_level": margin_level,
         "is_micro_sizing": is_micro_sizing,
-        "risk_label": risk_label
+        "risk_label": risk_label,
+        "active_positions": active_positions,
+        "trade_history": trade_history,
+        "last_log_lines": last_log_lines
     }
+
+@app.get("/binance/stats", response_model=BinanceStats)
+async def get_binance_stats():
+    return binance_service.get_stats()
 
 if __name__ == "__main__":
     import uvicorn

@@ -21,7 +21,8 @@ class TradingLogger:
             return
         
         # Create logs directory
-        log_dir = Path(__file__).parent.parent.parent / "logs"
+        # Create logs directory - go up from src/nanobot/utils to project root
+        log_dir = Path(__file__).parent.parent.parent.parent / "logs"
         log_dir.mkdir(exist_ok=True)
         
         # Console handler with color formatting

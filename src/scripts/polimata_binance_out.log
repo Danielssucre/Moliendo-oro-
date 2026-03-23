@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/danielsuarezsucre/TRADING/trading_agent/src/scripts/run_polimata_binance.py", line 24, in <module>
+    from src.nanobot.exchanges.binance_client import BinanceClient
+  File "/Users/danielsuarezsucre/TRADING/trading_agent/src/nanobot/exchanges/binance_client.py", line 9, in <module>
+    from binance.client import Client
+ModuleNotFoundError: No module named 'binance'

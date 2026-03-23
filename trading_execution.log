@@ -1,0 +1,554 @@
+DEBUG: L1 - STARTING EXECUTION
+⚠️ RL Trailing disabled (torch not found): No module named 'torch'
+⚠️ MFE Sniper disabled (torch not found): No module named 'torch'
+⚠️ Polimata RL disabled: No module named 'stable_baselines3'
+09:35:41 | INFO     | ✅ Telegram Bot Configured.
+DEBUG: L125 - GLOBAL SCOPE PROGRESSING
+09:35:41 | INFO     | 🔄 DYNAMIC PORTFOLIO LOADED: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'GBPJPY', 'EURJPY', 'EURGBP', 'AUDJPY', 'CHFJPY', 'CADJPY', 'EURAUD', 'GBPAUD', 'EURNZD', 'NZDJPY', 'USDCHF', 'XAUUSD', 'XAGUSD', 'BTCUSD', 'ETHUSD', 'SOLUSD']
+09:35:41 | INFO     | 🚀 FINAL PORTFOLIO SYNC: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'GBPJPY', 'EURJPY', 'EURGBP', 'AUDJPY', 'CHFJPY', 'CADJPY', 'EURAUD', 'GBPAUD', 'EURNZD', 'NZDJPY', 'USDCHF', 'XAUUSD', 'XAGUSD', 'BTCUSD', 'ETHUSD', 'SOLUSD']
+09:35:41 | INFO     | ✅ Stop Hunt ML Model loaded from /Users/danielsuarezsucre/TRADING/trading_agent/models/stop_hunt_rf_calibrated.joblib
+DEBUG: L1545 - ENTERING MAIN
+📡 INITIALIZING SILICON MT5 BRIDGE (AXI CHALLENGE)...
+📡 INITIALIZING MT5 BRIDGE: Axi-US51-Live (#60220215)...
+✅ MT5 Initialized with Path (Portable)
+🍏 MT5 CONNECTED: (500, 5660, '27 Feb 2026')
+✅ SILICON MT5 BRIDGE INITIALIZED.
+🏦 QUANTUM RISK RL: Active | Peak (Reset): $26.28
+✅ NO Active Pending Orders.
+
+    ╔══════════════════════════════════════════════════════╗
+    ║   🦖 NANOBOT HIVE V5 (ALL-STARS EDITION) 🌟          ║
+    ║   Assets: Top 11 Performers (AUD, GBP, JPY, Crypto)  ║
+    ║   Mode:   H1 TREND SNIPER (Native FTMO Data)         ║
+    ║   Risk:   0.4% (PF 1.32 Config)                     ║
+    ║   Capital: $26.28                     ║
+    ╚══════════════════════════════════════════════════════╝
+    
+💰 LIVE BALANCE SYNC: $26.28 (USD)
+09:35:41 | INFO     | 📡 Sending Startup Message (Async)...
+09:35:41 | ERROR    | ❌ Gatekeeper Import Error: No module named 'torch'
+09:35:41 | INFO     | 🚀 Starting FTMO Guardian Bot (Manual/Signal Mode)...
+09:35:41 | INFO     | ⚡ Entering 24/7 Signal Scan Loop...
+⏳ Scanning... (Ctrl+C to stop)
+09:35:41 | DEBUG    | --- [STEP 0] Loop Start ---
+09:35:41 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:35:41 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:35:41 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:35:41 | INFO     | 🛡️ IRON SHIELD v2: Market Guardian Initialized and Active.
+09:35:41 | INFO     | 🔍 [SYNC] Basket Lock: ON | TP Target: $1.00
+09:35:41 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:35:41 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:41 | INFO     | 📦 Portfolio Allocator: Sin modelo previo. Iniciando desde cero.
+09:35:41 | INFO     | 🧠 RL Portfolio Allocator: Online. Cold-start defaults activos hasta entrenamiento.
+09:35:41 | INFO     | 🎼 BOT ORCHESTRATOR: All-Weather + RL Allocator Initialized.
+09:35:41 | INFO     |   RL Allocator: ✅ ACTIVE
+09:35:41 | INFO     | 🎼 ALL-WEATHER: Orchestrator Online. Regime detection active.
+🧠 Meta-RL Selector: Iniciando desde cero (Cold Start)
+09:35:41 | INFO     | 🧠 META-RL SELECTOR: Online. 3-Strategy experiment ready.
+09:35:41 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:35:41 | DEBUG    | --- [STEP 5] Management Start ---
+09:35:41 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:35:41 UTC | AI: ACTIVE09:35:41 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:35:41 | INFO     | 🔍 [1/5] SIGNAL: EURUSD | BUY | Str: 🎯 HUNTER X (HIVE V6 (Aggressive NY)) | Src: LHN
+09:35:41 | INFO     | ✅ [2/5] HIVE PASSED: EURUSD (ADX=22.3, Vol=0.9)
+09:35:41 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:42 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 410
+09:35:42 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 418
+09:35:42 | INFO     | 📊 [3/6] MARKET REGIME: EURUSD is RANGING (ADX=22.3, Slope=-3.57)
+09:35:42 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] EURUSD @ 1.1571
+09:35:42 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:35:42 | INFO     | 🤖 [FINAL_VERIFICATION] EURUSD: 0.01 lots @ 1.15692
+09:35:42 | ERROR    | ❌ ORDER FAILED: AutoTrading disabled by client (10027)
+09:35:43 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:44 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 299
+09:35:45 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:46 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 413
+09:35:46 | ERROR    | Iter Error (EURUSD): name 'prob_val' is not defined
+09:35:46 | INFO     | 🔍 [1/5] SIGNAL: EURJPY | BUY | Str: FRACTAL GAMMA (L3 Breakout) | Src: LHN
+09:35:46 | INFO     | ✅ [2/5] HIVE PASSED: EURJPY (ADX=71.0, Vol=0.5)
+09:35:47 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:48 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 418
+09:35:48 | INFO     | 📊 [3/6] MARKET REGIME: EURJPY is TRENDING (ADX=71.0, Slope=1.52)
+09:35:48 | INFO     | ⚖️ [SNIPER VETO] EURJPY Prob=68.26% (Threshold 75%) -> Low liquidity for small cap
+09:35:48 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] EURJPY @ 184.2370
+09:35:48 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:35:48 | INFO     | 🤖 [FINAL_VERIFICATION] EURJPY: 0.01 lots @ 184.23500
+09:35:48 | ERROR    | ❌ ORDER FAILED: AutoTrading disabled by client (10027)
+09:35:49 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:50 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 299
+09:35:52 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:52 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 413
+09:35:52 | ERROR    | Iter Error (EURJPY): name 'prob_val' is not defined
+09:35:52 | INFO     | 🔍 [1/5] SIGNAL: CHFJPY | SELL | Str: FRACTAL DELTA (Liquidity Sweep) | Src: LHN
+09:35:52 | INFO     | ✅ [2/5] HIVE PASSED: CHFJPY (ADX=70.0, Vol=0.9)
+09:35:54 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:55 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 418
+09:35:55 | INFO     | 📊 [3/6] MARKET REGIME: CHFJPY is TRENDING (ADX=70.0, Slope=0.49)
+09:35:55 | INFO     | ⚖️ [SNIPER VETO] CHFJPY Prob=68.26% (Threshold 75%) -> Low liquidity for small cap
+09:35:55 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] CHFJPY @ 202.0520
+09:35:55 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:35:55 | WARNING  | ⚠️ SPREAD HIGH for CHFJPY: 50.0 > 50 points
+09:35:55 | ERROR    | Iter Error (CHFJPY): name 'prob_val' is not defined
+09:35:55 | INFO     | 🔍 [1/5] SIGNAL: CADJPY | SELL | Str: FRACTAL GAMMA (L3 Breakout) | Src: LHN
+09:35:55 | INFO     | ✅ [2/5] HIVE PASSED: CADJPY (ADX=71.0, Vol=0.9)
+09:35:56 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:57 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 418
+09:35:57 | INFO     | 📊 [3/6] MARKET REGIME: CADJPY is TRENDING (ADX=71.0, Slope=4.00)
+09:35:57 | INFO     | ⚖️ [SNIPER VETO] CADJPY Prob=66.93% (Threshold 75%) -> Low liquidity for small cap
+09:35:57 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] CADJPY @ 116.0030
+09:35:57 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:35:57 | WARNING  | ⚠️ SPREAD HIGH for CADJPY: 51.0 > 50 points
+09:35:57 | ERROR    | Iter Error (CADJPY): name 'prob_val' is not defined
+09:35:57 | INFO     | 🔍 [1/5] SIGNAL: EURAUD | SELL | Str: FRACTAL DELTA (Liquidity Sweep) | Src: LHN
+09:35:57 | INFO     | ✅ [2/5] HIVE PASSED: EURAUD (ADX=45.5, Vol=1.0)
+09:35:58 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:35:59 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 418
+09:35:59 | INFO     | 📊 [3/6] MARKET REGIME: EURAUD is TRENDING (ADX=45.5, Slope=3.82)
+09:35:59 | INFO     | ⚖️ [SNIPER VETO] EURAUD Prob=72.42% (Threshold 75%) -> Low liquidity for small cap
+09:35:59 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] EURAUD @ 1.6475
+09:35:59 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:35:59 | WARNING  | ⚠️ SPREAD HIGH for EURAUD: 113.0 > 50 points
+09:35:59 | WARNING  | ⚠️ SPREAD HIGH for EURAUD: 113.0 > 50 points
+09:35:59 | ERROR    | Iter Error (EURAUD): name 'prob_val' is not defined
+09:35:59 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:35:59 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:35:59 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:35:59 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:35:59 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:00 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:00 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:00 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:00 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:00 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:00 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:00 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:00 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:00 UTC | AI: ACTIVE09:36:00 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:00 | INFO     | 🔍 [1/5] SIGNAL: EURUSD | BUY | Str: LAB_E8_E16 | Src: E8E16
+09:36:00 | INFO     | ✅ [2/5] HIVE PASSED: EURUSD (ADX=22.3, Vol=0.9)
+09:36:00 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:36:01 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 420
+09:36:01 | INFO     | 📊 [3/6] MARKET REGIME: EURUSD is RANGING (ADX=22.3, Slope=-3.57)
+09:36:01 | INFO     | 🦖 [EXECUTION / DATA COLLECTION] EURUSD @ 1.1571
+09:36:01 | INFO     | 🛑 [TIME FENCING] Sniper OFF during Choppy Hours (18:00).
+09:36:01 | INFO     | 🤖 [FINAL_VERIFICATION] EURUSD: 0.01 lots @ 1.15692
+09:36:01 | ERROR    | ❌ ORDER FAILED: AutoTrading disabled by client (10027)
+09:36:02 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:36:03 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 299
+09:36:05 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:36:05 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 413
+09:36:05 | ERROR    | Iter Error (EURUSD): name 'prob_val' is not defined
+09:36:06 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:06 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:06 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:06 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:06 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:07 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:07 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:07 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:07 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:07 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:07 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:07 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:07 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:07 UTC | AI: ACTIVE09:36:07 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:07 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:07 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:07 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:07 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:07 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:08 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:08 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:08 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:08 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:08 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:08 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:08 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:08 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:08 UTC | AI: ACTIVE09:36:08 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:08 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:08 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:08 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:08 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:08 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:09 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:09 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:09 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:09 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:09 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:09 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:09 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:09 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:09 UTC | AI: ACTIVE09:36:09 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:09 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:09 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:09 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:09 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:09 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:10 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:10 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:10 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:10 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:10 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:10 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:10 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:10 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:10 UTC | AI: ACTIVE09:36:10 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:11 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:11 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:11 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:11 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:11 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:12 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:12 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:12 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:12 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:12 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:12 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:12 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:12 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:12 UTC | AI: ACTIVE09:36:12 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:12 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:12 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:12 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:12 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:12 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:13 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:13 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:13 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:13 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:13 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:13 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:13 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:13 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:13 UTC | AI: ACTIVE09:36:13 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:13 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:13 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:13 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:13 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:13 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:14 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:14 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:14 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:14 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:14 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:14 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:14 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:14 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:14 UTC | AI: ACTIVE09:36:14 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:14 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:14 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:14 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:14 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:14 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:15 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:15 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:15 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:15 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:15 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:15 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:15 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:15 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:15 UTC | AI: ACTIVE09:36:15 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:16 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:16 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:16 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:16 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:16 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:17 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:17 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:17 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:17 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:17 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:17 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:17 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:17 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:17 UTC | AI: ACTIVE09:36:17 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:17 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:17 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:17 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:17 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:17 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:18 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:18 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:18 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:18 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:18 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:18 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:18 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:18 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:18 UTC | AI: ACTIVE09:36:18 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:18 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:18 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:18 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:18 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:18 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:19 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:19 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:19 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:19 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:19 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:19 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:19 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:19 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:19 UTC | AI: ACTIVE09:36:19 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:19 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:19 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:19 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:19 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:19 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:20 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:20 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:20 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:20 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:20 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:20 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:20 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:20 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:20 UTC | AI: ACTIVE09:36:20 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:21 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:21 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:21 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:21 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:21 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:22 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:22 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:22 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:22 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:22 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:22 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:22 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:22 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:22 UTC | AI: ACTIVE09:36:22 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:22 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:22 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:22 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:22 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:22 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:23 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:23 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:23 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:23 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:23 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:23 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:23 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:23 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:23 UTC | AI: ACTIVE09:36:23 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:23 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:23 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:23 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:23 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:23 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:24 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:24 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:24 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:24 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:24 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:24 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:24 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:24 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:24 UTC | AI: ACTIVE09:36:24 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:24 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:24 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:24 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:24 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:24 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:25 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:25 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:25 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:25 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:25 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:25 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:25 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:25 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:25 UTC | AI: ACTIVE09:36:25 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:26 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:26 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:26 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:26 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:26 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:27 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:27 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:27 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:27 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:27 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:27 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:27 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:27 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:27 UTC | AI: ACTIVE09:36:27 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:27 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:27 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:27 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:27 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:27 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:28 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:28 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:28 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:28 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:28 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:28 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:28 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:28 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:28 UTC | AI: ACTIVE09:36:28 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:28 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:28 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:28 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:28 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:28 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:29 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:29 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:29 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:29 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:29 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:29 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:29 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:29 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:29 UTC | AI: ACTIVE09:36:29 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:29 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:29 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:29 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:29 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:29 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:30 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:30 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:30 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:30 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:30 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:30 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:30 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:30 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:30 UTC | AI: ACTIVE09:36:30 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:31 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:31 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:31 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:31 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:31 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:32 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:32 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:32 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:32 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:32 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:32 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:32 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:32 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:32 UTC | AI: ACTIVE09:36:32 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:32 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:32 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:32 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:32 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:32 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:33 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:33 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:33 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:33 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:33 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:33 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:33 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:33 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:33 UTC | AI: ACTIVE09:36:33 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:33 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:33 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:33 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:33 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:33 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:34 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:34 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:34 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:34 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:34 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:34 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:34 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:34 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:34 UTC | AI: ACTIVE09:36:34 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:34 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:34 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:34 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:34 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:34 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:35 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:35 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:35 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:35 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:35 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:35 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:35 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:35 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:35 UTC | AI: ACTIVE09:36:35 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:35 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:35 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:35 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:35 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:35 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:36 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:36 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:36 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:36 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:36 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:36 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:36 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:36 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:36 UTC | AI: ACTIVE09:36:36 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:37 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:37 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:37 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:37 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:37 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:38 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:38 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:38 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:38 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:38 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:38 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:38 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:38 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:38 UTC | AI: ACTIVE09:36:38 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:38 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:38 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:38 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:38 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:38 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:39 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:39 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:39 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:39 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:39 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:39 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:39 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:39 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:39 UTC | AI: ACTIVE09:36:39 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:39 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:39 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:39 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:39 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:39 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:40 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:40 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:40 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:40 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:40 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:40 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:40 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:40 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:40 UTC | AI: ACTIVE09:36:40 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:40 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:40 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:40 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:40 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:40 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)
+09:36:41 | DEBUG    | --- [STEP 0] Loop Start ---
+09:36:41 | DEBUG    | --- [STEP 1] Connection Verified ---
+09:36:41 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+09:36:42 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 483
+09:36:42 | INFO     | 💓 Pulse Sent to Telegram
+09:36:42 | INFO     | 🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: $26.28
+09:36:42 | DEBUG    | --- [STEP 2] Pulse Checked ---
+09:36:42 | DEBUG    | --- [STEP 3] Guardian Checked ---
+09:36:42 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+09:36:42 | DEBUG    | --- [STEP 5] Management Start ---
+09:36:42 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 09:36:42 UTC | AI: ACTIVE09:36:42 | INFO     | 🎯🎯🎯 [Hunter X] ELITE SETUP DETECTED for EURUSD! (WR Hist 93.7%)
+09:36:42 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAUUSD (Volatile Asset on Small Capital)
+09:36:42 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping XAGUSD (Volatile Asset on Small Capital)
+09:36:42 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping BTCUSD (Volatile Asset on Small Capital)
+09:36:42 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping ETHUSD (Volatile Asset on Small Capital)
+09:36:42 | DEBUG    | 🛡️ [SMALL CAP SHIELD] Skipping SOLUSD (Volatile Asset on Small Capital)

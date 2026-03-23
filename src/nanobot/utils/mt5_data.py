@@ -18,7 +18,7 @@ class MT5DataSource:
     Institutional MT5 Data Source.
     Connects to SiliconMT5 Docker on port 8001.
     """
-    def __init__(self, host: str = "127.0.0.1", port: int = 8001):
+    def __init__(self, host: str = "127.0.0.1", port: int = 18812):
         self.port = port
         self.mt5 = None
         self.connected = False

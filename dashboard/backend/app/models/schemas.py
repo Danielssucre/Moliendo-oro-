@@ -12,6 +12,11 @@ class BotConfig(BaseModel):
     terra_mode: bool = True  # True = Mega Grid ON, False = Off
     mt5: Optional[MT5Credentials] = None
 
+class BasketLockConfig(BaseModel):
+    enabled: bool = True
+    threshold: float = 5.0
+    last_trigger: Optional[str] = None
+
 class BotStatus(BaseModel):
     is_running: bool
     pid: Optional[int] = None
@@ -41,3 +46,45 @@ class TradeStats(BaseModel):
     margin_level: float
     is_micro_sizing: bool = False
     risk_label: Optional[str] = None
+    active_positions: List[Dict] = []
+    trade_history: List[Dict] = []
+    last_log_lines: List[str] = []
+
+class MT5Trade(BaseModel):
+    ticket: int
+    symbol: str
+    type: str
+    volume: float
+    price_open: float
+    price_current: float
+    profit: float
+    time_open: str
+
+class MT5Stats(BaseModel):
+    balance: float
+    equity: float
+    margin: float
+    free_margin: float
+    margin_level: float
+    floating_profit: float
+    closed_profit: float
+    daily_pnl: float
+    active_trades: List[MT5Trade]
+    trade_history: List[MT5Trade]
+    last_log_lines: List[str]
+
+class BinancePosition(BaseModel):
+    symbol: str
+    entry: float
+    current: float
+    qty: float
+    pnl_pct: float
+    pnl_usdt: float
+
+class BinanceStats(BaseModel):
+    account_type: str
+    can_trade: bool
+    balances: Dict[str, float]
+    prices: Dict[str, float]
+    active_positions: List[BinancePosition]
+    last_log_lines: List[str]

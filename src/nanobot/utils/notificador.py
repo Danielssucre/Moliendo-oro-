@@ -5,64 +5,25 @@ import requests
 import logging
 from typing import Dict, Any, Optional
 from src.api.api_manager import api_manager
-from src.nanobot.utils.config import config
+from src.nanobot.utils.telegram_bot import TelegramBot
 
 logger = logging.getLogger(__name__)
 
 class Notificador:
-    """Handles sending notifications to Telegram."""
+    """Handles sending notifications to Telegram with Throttling."""
     
     def __init__(self):
-        self.telegram_config = config.get_api_config("telegram")
-        self.bot_token = self.telegram_config.get("bot_token")
-        self.chat_id = self.telegram_config.get("chat_id")
+        self.bot = TelegramBot()
+        self.enabled = self.bot.enabled
         self.last_update_id = 0
-        self.enabled = self._validate_config()
         if self.enabled:
             self._skip_old_messages()
-        
-    def _validate_config(self) -> bool:
-        """Check if Telegram is properly configured."""
-        if not self.bot_token or "YOUR_" in self.bot_token:
-            logger.warning("Telegram Bot Token not configured. Notifications disabled.")
-            return False
-        if not self.chat_id or "YOUR_" in self.chat_id:
-            logger.warning("Telegram Chat ID not configured. Notifications disabled.")
-            return False
-        return True
-
-    def _skip_old_messages(self):
-        """Skip messages already in the queue to start fresh."""
-        url = f"https://api.telegram.org/bot{self.bot_token}/getUpdates"
-        try:
-            response = requests.get(url, params={"limit": 1, "offset": -1}, timeout=5)
-            updates = response.json().get("result", [])
-            if updates:
-                self.last_update_id = updates[0]["update_id"]
-                logger.info(f"✅ Telegram Link: Listo. Saltando hasta ID {self.last_update_id}")
-        except Exception as e:
-            logger.warning(f"⚠️ Telegram Link: No se pudo limpiar la cola: {e}")
 
     def enviar_mensaje(self, mensaje: str) -> bool:
-        """Send a plain text message to Telegram."""
+        """Send a plain text message via the throttled bot."""
         if not self.enabled:
             return False
-            
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-        payload = {
-            "chat_id": self.chat_id,
-            "text": mensaje,
-            "parse_mode": "Markdown"
-        }
-        
-        try:
-            response = requests.post(url, json=payload, timeout=10)
-            response.raise_for_status()
-            logger.info("Notificación enviada con éxito a Telegram.")
-            return True
-        except Exception as e:
-            logger.error(f"Error enviando notificación a Telegram: {e}")
-            return False
+        return self.bot.send_message(mensaje)
 
     def enviar_alerta_sniper(self, signal_data: Dict[str, Any]) -> bool:
         """Send a formatted Sniper signal alert."""

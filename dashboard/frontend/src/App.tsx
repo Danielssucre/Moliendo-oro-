@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play, Square, Activity, TrendingUp, ShieldCheck,
   Settings as SettingsIcon, Bell, ChevronRight, Info, AlertTriangle,
@@ -38,7 +38,10 @@ function App() {
     free_margin: 0,
     margin_level: 0,
     is_micro_sizing: false,
-    risk_label: ""
+    risk_label: "",
+    active_positions: [],
+    trade_history: [],
+    last_log_lines: []
   });
   const [signals, setSignals] = useState<Signal[]>([]);
   const [creds, setCreds] = useState({ account: '', password: '', server: 'FTMO-Demo' });
@@ -46,83 +49,126 @@ function App() {
 
   const [discoveredAccounts, setDiscoveredAccounts] = useState<any[]>([]);
   const [showNewAccount, setShowNewAccount] = useState(false);
+  const [activeTab, setActiveTab] = useState<'mission' | 'binance'>('mission');
+  const [binanceData, setBinanceData] = useState<any>({
+    account_type: 'Checking...',
+    can_trade: false,
+    balances: {},
+    prices: {},
+    active_positions: [],
+    last_log_lines: []
+  });
+
+  const isUpdatingLockRef = useRef(false);
+  const [basketConfig, setBasketConfig] = useState({
+    enabled: true,
+    threshold: 5.0,
+    last_trigger: null
+  });
+
+  const [isUpdatingLock, setIsUpdatingLock] = useState(false);
+  const [thresholdInput, setThresholdInput] = useState("");
+
+  const fetchConfig = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/config`);
+      const config = await resp.json();
+      setRisk(config.risk_per_trade * 100);
+      if (config.mt5) {
+        setCreds({
+          account: String(config.mt5.account) || '',
+          password: config.mt5.password || '',
+          server: config.mt5.server || 'FTMO-Demo'
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch initial config", err);
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/accounts`);
+      const data = await resp.json();
+      setDiscoveredAccounts(data);
+
+      if (data.length > 0 && !creds.account) {
+        const first = data[0];
+        setCreds({ account: String(first.account), server: first.server, password: '' });
+        setShowNewAccount(false);
+        await fetch(`${API_BASE}/accounts/select`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: first.account, server: first.server })
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch discovered accounts", err);
+    }
+  };
+
+  const fetchData = async () => {
+    try {
+      const statusRes = await fetch(`${API_BASE}/status`);
+      const statusData = await statusRes.json();
+      setStatus(statusData);
+
+      const statsRes = await fetch(`${API_BASE}/stats`);
+      const statsData = await statsRes.json();
+      setStats(statsData);
+
+      const signalsRes = await fetch(`${API_BASE}/signals`);
+      const signalsData = await signalsRes.json();
+      setSignals(signalsData);
+
+      const binanceRes = await fetch(`${API_BASE}/binance/stats`);
+      const bData = await binanceRes.json();
+      setBinanceData(bData);
+    } catch (err) {
+      console.error("Failed to connect to backend");
+    }
+  };
+
+  const fetchBasketConfig = async () => {
+    if (isUpdatingLockRef.current) return;
+    try {
+      // Add timestamp to avoid browser caching of the toggle state
+      const resp = await fetch(`${API_BASE}/api/basket-lock?t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      const data = await resp.json();
+      setBasketConfig(data);
+    } catch (err) {
+      console.error("Failed to fetch basket config", err);
+    }
+  };
 
   useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const resp = await fetch(`${API_BASE}/config`);
-        const config = await resp.json();
-        setRisk(config.risk_per_trade * 100);
-        if (config.mt5) {
-          setCreds({
-            account: String(config.mt5.account) || '',
-            password: config.mt5.password || '',
-            server: config.mt5.server || 'FTMO-Demo'
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch initial config", err);
-      }
-    };
-
-    const fetchAccounts = async () => {
-      try {
-        const resp = await fetch(`${API_BASE}/accounts`);
-        const data = await resp.json();
-        setDiscoveredAccounts(data);
-
-        // Auto-select first account if nothing is selected yet
-        if (data.length > 0 && !creds.account) {
-          const first = data[0];
-          setCreds({ account: String(first.account), server: first.server, password: '' });
-          setShowNewAccount(false);
-
-          // Inform backend of selection
-          await fetch(`${API_BASE}/accounts/select`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ account: first.account, server: first.server })
-          });
-        }
-      } catch (err) {
-        console.error("Failed to fetch discovered accounts", err);
-      }
-    };
-
-    const fetchData = async () => {
-      try {
-        const statusRes = await fetch(`${API_BASE}/status`);
-        const statusData = await statusRes.json();
-        setStatus(statusData);
-
-        const statsRes = await fetch(`${API_BASE}/stats`);
-        const statsData = await statsRes.json();
-        setStats(statsData);
-
-        const signalsRes = await fetch(`${API_BASE}/signals`);
-        const signalsData = await signalsRes.json();
-        setSignals(signalsData);
-      } catch (err) {
-        console.error("Failed to connect to backend");
-      }
-    };
-
     fetchConfig();
     fetchAccounts();
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    fetchBasketConfig();
+
+    const interval = setInterval(() => {
+      fetchData();
+      fetchBasketConfig();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (basketConfig.threshold !== undefined && !isUpdatingLock) {
+      setThresholdInput(String(basketConfig.threshold));
+    }
+  }, [basketConfig.threshold, isUpdatingLock]);
 
   const handleSelectAccount = async (acc: any) => {
     if (acc === 'new') {
       setShowNewAccount(true);
       return;
     }
-
     setShowNewAccount(false);
     setCreds({ account: String(acc.account), server: acc.server, password: '' });
-
     try {
       await fetch(`${API_BASE}/accounts/select`, {
         method: 'POST',
@@ -165,6 +211,55 @@ function App() {
       }
     } catch (err) {
       console.error("Failed to toggle mega grid", err);
+    }
+  };
+
+  const handleToggleBasketLock = async () => {
+    isUpdatingLockRef.current = true;
+    setIsUpdatingLock(true);
+    const newConfig = { ...basketConfig, enabled: !basketConfig.enabled };
+    setBasketConfig(newConfig);
+    try {
+      await fetch(`${API_BASE}/api/basket-lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
+      setTimeout(() => {
+        isUpdatingLockRef.current = false;
+        setIsUpdatingLock(false);
+      }, 3000);
+    } catch (err) {
+      console.error("Failed to update basket lock", err);
+      isUpdatingLockRef.current = false;
+      setIsUpdatingLock(false);
+    }
+  };
+
+  const handleUpdateThreshold = async () => {
+    const threshold = parseFloat(thresholdInput);
+    if (isNaN(threshold)) {
+      setThresholdInput(String(basketConfig.threshold));
+      return;
+    }
+    isUpdatingLockRef.current = true;
+    setIsUpdatingLock(true);
+    const newConfig = { ...basketConfig, threshold };
+    setBasketConfig(newConfig);
+    try {
+      await fetch(`${API_BASE}/api/basket-lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
+      setTimeout(() => {
+        isUpdatingLockRef.current = false;
+        setIsUpdatingLock(false);
+      }, 3000);
+    } catch (err) {
+      console.error("Failed to update basket threshold", err);
+      isUpdatingLockRef.current = false;
+      setIsUpdatingLock(false);
     }
   };
 
@@ -231,6 +326,44 @@ function App() {
             </select>
           </div>
 
+          <div
+            className={`nav-item ${activeTab === 'mission' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mission')}
+            style={{
+              padding: '12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: activeTab === 'mission' ? 'rgba(0, 242, 255, 0.1)' : 'transparent',
+              color: activeTab === 'mission' ? '#00f2ff' : '#888',
+              transition: 'all 0.2s'
+            }}
+          >
+            <TrendingUp size={20} />
+            <span style={{ fontWeight: 600 }}>MT5 MISSION</span>
+          </div>
+
+          <div
+            className={`nav-item ${activeTab === 'binance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('binance')}
+            style={{
+              padding: '12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: activeTab === 'binance' ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
+              color: activeTab === 'binance' ? '#ffd700' : '#888',
+              transition: 'all 0.2s'
+            }}
+          >
+            <Database size={20} />
+            <span style={{ fontWeight: 600 }}>BINANCE TERMINAL</span>
+          </div>
+
           {(showNewAccount || !creds.account) && (
             <>
               <div className="input-group">
@@ -280,170 +413,391 @@ function App() {
       </aside>
 
       <main className="main-content">
-        <div className="header">
-          <div>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mission Dashboard</h1>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span className={`status-badge ${status.is_running ? 'active' : 'idle'}`}>
-                {status.is_running ? 'BOT ACTIVE' : 'BOT IDLE'}
-              </span>
-              <span style={{ fontSize: '0.8rem', color: '#666' }}>
-                PID: {status.pid || 'N/A'}
-              </span>
-              <span style={{
-                fontSize: '0.8rem',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: status.account_status === 'Active' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                color: status.account_status === 'Active' ? '#00ff88' : '#888',
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}>
-                <TrendingUp size={12} /> MT5: {status.account_status}
-              </span>
-              <span style={{
-                fontSize: '0.8rem',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: status.telegram_status === 'Connected' ? 'rgba(0, 242, 255, 0.1)' : 'rgba(255, 0, 85, 0.1)',
-                color: status.telegram_status === 'Connected' ? '#00f2ff' : '#ff0055',
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}>
-                <Activity size={12} /> Telegram: {status.telegram_status}
-              </span>
-              <span style={{
-                fontSize: '0.8rem',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                background: status.polimata_retrains > 0 ? 'rgba(184, 134, 11, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                color: status.polimata_retrains > 0 ? '#ffd700' : '#888',
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}>
-                <Cpu size={12} /> Polimata: #{status.polimata_retrains} (Last: {status.last_retrain || 'N/A'})
-              </span>
+        {activeTab === 'mission' ? (
+          <>
+            <div className="header">
+              <div>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mission Dashboard</h1>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <span className={`status-badge ${status.is_running ? 'active' : 'idle'}`}>
+                    {status.is_running ? 'BOT ACTIVE' : 'BOT IDLE'}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                    PID: {status.pid || 'N/A'}
+                  </span>
+                  <span style={{
+                    fontSize: '0.8rem',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: status.account_status === 'Active' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                    color: status.account_status === 'Active' ? '#00ff88' : '#888',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}>
+                    <TrendingUp size={12} /> MT5: {status.account_status}
+                  </span>
+                  <span style={{
+                    fontSize: '0.8rem',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: status.telegram_status === 'Connected' ? 'rgba(0, 242, 255, 0.1)' : 'rgba(255, 0, 85, 0.1)',
+                    color: status.telegram_status === 'Connected' ? '#00f2ff' : '#ff0055',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}>
+                    <Activity size={12} /> Telegram: {status.telegram_status}
+                  </span>
+                  <span style={{
+                    fontSize: '0.8rem',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: status.polimata_retrains > 0 ? 'rgba(184, 134, 11, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                    color: status.polimata_retrains > 0 ? '#ffd700' : '#888',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}>
+                    <Cpu size={12} /> Polimata: #{status.polimata_retrains} (Last: {status.last_retrain || 'N/A'})
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '6px 12px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  <button
+                    className={`btn ${basketConfig.enabled ? 'btn-success' : 'btn-dark'}`}
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.75rem',
+                      background: basketConfig.enabled ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255,255,255,0.05)',
+                      color: basketConfig.enabled ? '#00ff88' : '#666',
+                      border: basketConfig.enabled ? '1px solid #00ff88' : '1px solid rgba(255,255,255,0.1)'
+                    }}
+                    onClick={handleToggleBasketLock}
+                  >
+                    <ShieldCheck size={14} /> {basketConfig.enabled ? 'LOCK ACTIVE' : 'LOCK OFF'}
+                  </button>
+                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }}></div>
+                  <span style={{ fontSize: '0.65rem', color: '#888', fontWeight: 600 }}>TARGET:</span>
+                  <input
+                    type="text"
+                    value={thresholdInput}
+                    onChange={(e) => setThresholdInput(e.target.value)}
+                    onBlur={handleUpdateThreshold}
+                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateThreshold()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#00ff88',
+                      width: '45px',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      outline: 'none',
+                      padding: '0'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#555' }}>$</span>
+                </div>
+
+                <button
+                  className={`btn ${status.mega_grid_active ? 'btn-primary' : 'btn-dark'}`}
+                  onClick={handleToggleMegaGrid}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.8rem',
+                    background: status.mega_grid_active ? 'rgba(0, 242, 255, 0.1)' : 'rgba(255,255,255,0.03)',
+                    color: status.mega_grid_active ? '#00f2ff' : '#666',
+                    border: status.mega_grid_active ? '1px solid #00f2ff' : '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  <Activity size={16} /> {status.mega_grid_active ? 'MEGA GRID' : 'GRID OFF'}
+                </button>
+
+                <button
+                  className={`btn ${status.is_running ? 'btn-danger' : 'btn-success'}`}
+                  onClick={status.is_running ? handleStop : handleStart}
+                  style={{ padding: '10px 20px', fontWeight: 'bold' }}
+                >
+                  {status.is_running ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+                  {status.is_running ? 'STOP BOT' : 'INICIAR BOT'}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              className={`btn ${status.mega_grid_active ? 'btn-gold' : 'btn-dark'}`}
-              onClick={handleToggleMegaGrid}
-              style={{
-                background: status.mega_grid_active ? 'linear-gradient(135deg, #ffd700, #b8860b)' : 'rgba(255,255,255,0.05)',
-                color: status.mega_grid_active ? '#000' : '#888',
-                fontWeight: 700,
-                border: status.mega_grid_active ? 'none' : '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              {status.mega_grid_active ? <Activity size={18} /> : <Activity size={18} style={{ opacity: 0.5 }} />}
-              {status.mega_grid_active ? 'MEGA GRID: ON' : 'MEGA GRID: OFF'}
-            </button>
+            <div className="stats-grid">
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ color: '#a0a0a0' }}>Equity</span>
+                  <TrendingUp size={20} color="#00ff88" />
+                </div>
+                <h2 style={{ fontSize: '1.8rem' }}>${stats.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
+                <p style={{ color: '#00ff88', fontSize: '0.8rem', marginTop: '0.5rem' }}>Balance: ${stats.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
 
-            <button
-              className={`btn ${status.is_running ? 'btn-danger' : 'btn-primary'}`}
-              onClick={status.is_running ? handleStop : handleStart}
-              disabled={!creds.account || (!creds.password && showNewAccount)}
-            >
-              {status.is_running ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-              {status.is_running ? 'STOP BOT' : 'INICIAR BOT'}
-            </button>
-          </div>
-        </div>
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ color: '#a0a0a0' }}>Daily PnL</span>
+                  <BarChart3 size={20} color="#00f2ff" />
+                </div>
+                <h2 style={{ fontSize: '1.8rem', color: stats.daily_pnl >= 0 ? '#00ff88' : '#ff0055' }}>
+                  ${stats.daily_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>Total: ${stats.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
 
-        <div className="stats-grid">
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ color: '#a0a0a0' }}>Equity</span>
-              <TrendingUp size={20} color="#00ff88" />
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ color: '#a0a0a0' }}>Margin Level</span>
+                  <ShieldCheck size={20} color={stats.margin_level > 200 ? "#00ff88" : "#ffd700"} />
+                </div>
+                <h2 style={{ fontSize: '1.8rem' }}>{stats.margin_level.toFixed(2)}%</h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>Margin: ${stats.margin.toLocaleString()}</p>
+              </div>
+
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ color: '#a0a0a0' }}>Free Margin</span>
+                  <Zap size={20} color="#00f2ff" />
+                </div>
+                <h2 style={{ fontSize: '1.8rem' }}>${stats.free_margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>{stats.active_trades} Active Trades</p>
+              </div>
             </div>
-            <h2 style={{ fontSize: '1.8rem' }}>${stats.equity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
-            <p style={{ color: '#00ff88', fontSize: '0.8rem', marginTop: '0.5rem' }}>Balance: ${stats.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </div>
 
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ color: '#a0a0a0' }}>Daily PnL</span>
-              <BarChart3 size={20} color="#00f2ff" />
-            </div>
-            <h2 style={{ fontSize: '1.8rem', color: stats.daily_pnl >= 0 ? '#00ff88' : '#ff0055' }}>
-              ${stats.daily_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </h2>
-            <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>Total: ${stats.total_pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </div>
+            <section className="market-activity">
+              <div className="card" style={{ minHeight: '400px', overflowX: 'auto' }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Activity size={20} color="#00f2ff" /> Recent Signals (Beta L-H-N)
+                </h3>
 
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ color: '#a0a0a0' }}>Margin Level</span>
-              <ShieldCheck size={20} color={stats.margin_level > 200 ? "#00ff88" : "#ffd700"} />
-            </div>
-            <h2 style={{ fontSize: '1.8rem' }}>{stats.margin_level.toFixed(2)}%</h2>
-            <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>Margin: ${stats.margin.toLocaleString()}</p>
-          </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#a0a0a0' }}>
+                      <th style={{ padding: '12px' }}>Time</th>
+                      <th style={{ padding: '12px' }}>Symbol</th>
+                      <th style={{ padding: '12px' }}>Action</th>
+                      <th style={{ padding: '12px' }}>Strategy</th>
+                      <th style={{ padding: '12px' }}>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signals.length > 0 ? signals.map((sig, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px' }}>{sig.time}</td>
+                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{sig.symbol}</td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{
+                            color: sig.type === 'BUY' ? '#00ff88' : '#ff0055',
+                            fontWeight: 'bold',
+                            padding: '2px 8px',
+                            background: sig.type === 'BUY' ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,85,0.1)',
+                            borderRadius: '4px'
+                          }}>
+                            {sig.type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px', color: '#e0e0e0' }}>{sig.strategy}</td>
+                        <td style={{ padding: '12px', color: '#666' }}>{sig.source}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                          Waiting for live signals...
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ color: '#a0a0a0' }}>Free Margin</span>
-              <Zap size={20} color="#00f2ff" />
-            </div>
-            <h2 style={{ fontSize: '1.8rem' }}>${stats.free_margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
-            <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>{stats.active_trades} Active Trades</p>
-          </div>
-        </div>
-
-        <section className="market-activity">
-          <div className="card" style={{ minHeight: '400px', overflowX: 'auto' }}>
-            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Activity size={20} color="#00f2ff" /> Recent Signals (Beta L-H-N)
-            </h3>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#a0a0a0' }}>
-                  <th style={{ padding: '12px' }}>Time</th>
-                  <th style={{ padding: '12px' }}>Symbol</th>
-                  <th style={{ padding: '12px' }}>Action</th>
-                  <th style={{ padding: '12px' }}>Strategy</th>
-                  <th style={{ padding: '12px' }}>Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {signals.length > 0 ? signals.map((sig, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '12px' }}>{sig.time}</td>
-                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{sig.symbol}</td>
-                    <td style={{ padding: '12px' }}>
-                      <span style={{
-                        color: sig.type === 'BUY' ? '#00ff88' : '#ff0055',
-                        fontWeight: 'bold',
-                        padding: '2px 8px',
-                        background: sig.type === 'BUY' ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,85,0.1)',
-                        borderRadius: '4px'
-                      }}>
-                        {sig.type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px', color: '#e0e0e0' }}>{sig.strategy}</td>
-                    <td style={{ padding: '12px', color: '#666' }}>{sig.source}</td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                      Waiting for live signals...
-                    </td>
-                  </tr>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+              <div className="card" style={{ minHeight: '350px' }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <TrendingUp size={20} color="#00ff88" /> Active MT5 Positions
+                </h3>
+                {stats.active_positions && stats.active_positions.length > 0 ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#666' }}>
+                        <th style={{ padding: '8px' }}>Symbol</th>
+                        <th style={{ padding: '8px' }}>Type</th>
+                        <th style={{ padding: '8px' }}>Volume</th>
+                        <th style={{ padding: '8px' }}>Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.active_positions.map((pos: any, i: number) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{pos.symbol}</td>
+                          <td style={{ padding: '8px' }}>
+                            <span style={{ color: pos.type === 'BUY' ? '#00ff88' : '#ff0055' }}>{pos.type}</span>
+                          </td>
+                          <td style={{ padding: '8px' }}>{pos.volume}</td>
+                          <td style={{ padding: '8px', color: pos.profit >= 0 ? '#00ff88' : '#ff0055', fontWeight: 'bold' }}>
+                            ${pos.profit.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>No open positions in MT5</div>
                 )}
-              </tbody>
-            </table>
+              </div>
+
+              <div className="card" style={{ minHeight: '350px', background: '#0a0a0a' }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <BarChart3 size={20} color="#ffd700" /> Recent MT5 History (Today)
+                </h3>
+                {stats.trade_history && stats.trade_history.length > 0 ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                    <tbody>
+                      {stats.trade_history.slice().reverse().map((deal: any, i: number) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '6px', color: '#888' }}>{deal.time_open.split(' ')[1]}</td>
+                          <td style={{ padding: '6px', fontWeight: 'bold' }}>{deal.symbol}</td>
+                          <td style={{ padding: '6px' }}>{deal.volume}</td>
+                          <td style={{ padding: '6px', color: deal.profit >= 0 ? '#00ff88' : '#ff0055' }}>
+                            {deal.profit >= 0 ? '+' : ''}${deal.profit.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>No trade history today</div>
+                )}
+              </div>
+            </div>
+
+            <section className="mt5-logs" style={{ marginTop: '1.5rem' }}>
+              <div className="card" style={{ background: '#050505', border: '1px solid rgba(0, 242, 255, 0.2)' }}>
+                <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Database size={20} color="#00f2ff" /> Live Forex Logs (run_live)
+                </h3>
+                <div style={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: '#00f2ff',
+                  height: '200px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column-reverse',
+                  background: 'rgba(0,0,0,0.3)',
+                  padding: '10px',
+                  borderRadius: '8px'
+                }}>
+                  {stats.last_log_lines && stats.last_log_lines.map((line: string, i: number) => (
+                    <div key={i} style={{ marginBottom: '2px', opacity: i === 0 ? 1 : 0.7, borderLeft: '2px solid rgba(0,242,255,0.1)', paddingLeft: '8px' }}>
+                      {line}
+                    </div>
+                  )).reverse()}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="binance-view">
+            <div className="header" style={{ marginBottom: '2rem' }}>
+              <div>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem', color: '#ffd700' }}>Binance Terminal</h1>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <span className={`status-badge ${binanceData.can_trade ? 'active' : 'idle'}`} style={{ background: binanceData.can_trade ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255, 0, 85, 0.1)', color: binanceData.can_trade ? '#ffd700' : '#ff0055' }}>
+                    {binanceData.can_trade ? 'STAGING: READY' : 'TRADING: DISABLED'}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                    Type: {binanceData.account_type}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="stats-grid">
+              <div className="card">
+                <span style={{ color: '#a0a0a0', fontSize: '0.8rem' }}>USDT BALANCE</span>
+                <h2 style={{ fontSize: '1.8rem', color: '#ffd700' }}>${(binanceData.balances?.USDT || 0).toFixed(4)}</h2>
+              </div>
+              <div className="card">
+                <span style={{ color: '#a0a0a0', fontSize: '0.8rem' }}>ETH PRICE</span>
+                <h2 style={{ fontSize: '1.8rem' }}>${(binanceData.prices?.ETH || 0).toLocaleString()}</h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.7rem' }}>Bal: {(binanceData.balances?.ETH || 0).toFixed(6)} ETH</p>
+              </div>
+              <div className="card">
+                <span style={{ color: '#a0a0a0', fontSize: '0.8rem' }}>SOL PRICE</span>
+                <h2 style={{ fontSize: '1.8rem' }}>${(binanceData.prices?.SOL || 0).toLocaleString()}</h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.7rem' }}>Bal: {(binanceData.balances?.SOL || 0).toFixed(4)} SOL</p>
+              </div>
+              <div className="card">
+                <span style={{ color: '#a0a0a0', fontSize: '0.8rem' }}>BTC PRICE</span>
+                <h2 style={{ fontSize: '1.8rem' }}>${(binanceData.prices?.BTC || 0).toLocaleString()}</h2>
+                <p style={{ color: '#a0a0a0', fontSize: '0.7rem' }}>Bal: {(binanceData.balances?.BTC || 0).toFixed(8)} BTC</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
+              <div className="card" style={{ minHeight: '300px' }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#ffd700' }}>
+                  <Zap size={20} /> Polimata Binance Core
+                </h3>
+                {binanceData.active_positions.length > 0 ? (
+                  binanceData.active_positions.map((pos: any, i: number) => (
+                    <div key={i} style={{ padding: '15px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.1)', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 'bold' }}>{pos.symbol}</span>
+                        <span style={{ color: '#00ff88' }}>COMPRA ACTIVA</span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
+                        Polimata DQN Neural Strategy
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                    <Info size={32} style={{ marginBottom: '10px', opacity: 0.3 }} />
+                    <p>No active positions on Binance</p>
+                    <p style={{ fontSize: '0.7rem' }}>Scanning for Neural RL signals...</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="card" style={{ minHeight: '300px', background: '#0a0a0a' }}>
+                <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#ffd700' }}>
+                  <Database size={20} /> Live Logs (polimata_binance)
+                </h3>
+                <div style={{
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: '#00ff88',
+                  height: '220px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column-reverse'
+                }}>
+                  {binanceData.last_log_lines.map((line: string, i: number) => (
+                    <div key={i} style={{ marginBottom: '2px', opacity: i === 0 ? 1 : 0.7 }}>
+                      {line}
+                    </div>
+                  )).reverse()}
+                </div>
+              </div>
+            </div>
           </div>
-        </section>
+        )}
       </main>
     </div>
   );

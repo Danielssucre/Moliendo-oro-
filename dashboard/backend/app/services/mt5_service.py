@@ -3,7 +3,7 @@ import json
 import logging
 import subprocess
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from siliconmetatrader5 import MetaTrader5
 
 logger = logging.getLogger("DASHBOARD_MT5")
@@ -197,12 +197,72 @@ class MT5Service:
                     "floating_profit": acc_info.profit,
                     "closed_profit": closed_profit,
                     "daily_pnl": acc_info.profit + closed_profit,
-                    "active_trades": len(positions) if positions else 0
+                    "active_trades": len(positions) if positions else 0,
+                    "active_positions": self.get_active_positions(),
+                    "trade_history": self.get_trade_history(),
+                    "last_log_lines": self.get_last_logs(20)
                 }
         except Exception as e:
             logger.error(f"Error fetching account stats: {e}")
         
         return None
+
+    def get_active_positions(self) -> List[Dict]:
+        """Fetch detailed info for all open positions."""
+        if not self.connect(): return []
+        positions = self.client.positions_get()
+        if not positions: return []
+        
+        return [{
+            "ticket": p.ticket,
+            "symbol": p.symbol,
+            "type": "BUY" if p.type == 0 else "SELL",
+            "volume": p.volume,
+            "price_open": p.price_open,
+            "price_current": p.price_current,
+            "profit": p.profit,
+            "time_open": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(p.time))
+        } for p in positions]
+
+    def get_trade_history(self) -> List[Dict]:
+        """Fetch history of closed trades for today."""
+        if not self.connect(): return []
+        from datetime import datetime, time as dtime
+        now = datetime.now()
+        start_of_day = datetime.combine(now.date(), dtime.min)
+        
+        deals = self.client.history_deals_get(start_of_day, now)
+        if not deals: return []
+        
+        history = []
+        for d in deals:
+            # We only want entries that represent closing (Entry Out) 
+            # or just all deals with profit != 0
+            if d.profit != 0:
+                history.append({
+                    "ticket": d.ticket,
+                    "symbol": d.symbol,
+                    "type": "FIX" if d.entry == 0 else "OUT", # Simplified
+                    "volume": d.volume,
+                    "price_open": 0.0, # Not directly in deal info
+                    "price_current": d.price,
+                    "profit": d.profit,
+                    "time_open": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(d.time))
+                })
+        return history[-20:] # Last 20 closed deals
+
+    def get_last_logs(self, limit: int = 50) -> List[str]:
+        """Fetch last lines from dashboard_bot.log."""
+        log_path = os.path.join(self.project_root, "logs/dashboard_bot.log")
+        if not os.path.exists(log_path):
+            return ["Log file not found."]
+        
+        try:
+            with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+                lines = f.readlines()
+                return [line.strip() for line in lines[-limit:]]
+        except Exception as e:
+            return [f"❌ Error reading logs: {str(e)}"]
 
     def get_recent_signals(self):
         # This will be integrated with the bot's signal logging later

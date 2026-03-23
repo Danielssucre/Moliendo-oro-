@@ -331,5 +331,6 @@
             "normal": 60,
             "dead": 120
         }
-    }
+    },
+    "mega_grid_enabled": false
 }

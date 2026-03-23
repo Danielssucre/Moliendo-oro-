@@ -138,6 +138,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("NAANOBOT_FTMO")
 
+# --- BASKET LOCK TRACKING (Visual Proof for User) ---
+LAST_BASKET_ENABLED = None
+LAST_BASKET_THRESHOLD = None
+LAST_BASKET_RELEASE_TIME = 0 # Global timestamp for cooldown
+CURRENT_BASKET_PEAK = 0.0    # Trailing peak tracking
+CURRENT_BASKET_FLOOR = -999.0 # Safety floor
+
 # --- VIRTUAL ORDER MANAGER (SHADOW GRID) ---
 print("DEBUG: L125 - GLOBAL SCOPE PROGRESSING")
 # --- REAL GRID MANAGER (L-H-N REAL EXPERIMENT) ---
@@ -147,6 +154,7 @@ class RealGridManager:
         self.log_file = log_file
         self.active_trades = [] # List of dicts with {ticket, symbol, config, etc.}
         self._ensure_log_exists()
+        self.critical_errors_detected = 0 # Phase 98 Safety
 
     def _ensure_log_exists(self):
         os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
@@ -216,26 +224,34 @@ class RealGridManager:
             # Lot size adjusted: 0.01 for Standard, 0.03 for Némesis (Triple Antithesis)
             lot_to_use = 0.03 if cfg['tag'] == 'NEME' else 0.01
             res = execute_mt5_trade(symbol, order_type, float(entry_price), sl, tp, lot_to_use, comment=f"{source}_{config_name}")
-            if res and res.retcode == 10009:
-                count += 1
-                self.active_trades.append({
-                    "ticket": res.order,
-                    "symbol": symbol,
-                    "config": config_name,
-                    "entry": res.price,
-                    "sl": sl,
-                    "tp": tp,
-                    "sig": actual_sig,
-                    "prob": prob_val,
-                    "adx": adx_val,
-                    "rsi": rsi_val,
-                    "vol": vol_val,
-                    "rr": cfg['rr'],
-                    "sl_dist": sl_dist,
-                    "peak_r": 0.0,
-                    "drawdown_r": 0.0,
-                    "session": session
-                })
+            
+            if res:
+                if res.retcode == 10009:
+                    count += 1
+                    self.active_trades.append({
+                        "ticket": res.order,
+                        "symbol": symbol,
+                        "config": config_name,
+                        "entry": res.price,
+                        "sl": sl,
+                        "tp": tp,
+                        "sig": actual_sig,
+                        "prob": prob_val,
+                        "adx": adx_val,
+                        "rsi": rsi_val,
+                        "vol": vol_val,
+                        "rr": cfg['rr'],
+                        "sl_dist": sl_dist,
+                        "peak_r": 0.0,
+                        "drawdown_r": 0.0,
+                        "session": session
+                    })
+                elif res.retcode in [10027, 10012, 10014, 10017, 10018]:
+                    # 10027: AutoTrading Disabled, 10018: Market Closed, etc.
+                    logger.error(f"🛑 CRITICAL BROKER ERROR ({res.retcode}): {res.comment}. Aborting variant pool for {symbol}.")
+                    self.critical_errors_detected += 1
+                    break # STOP trying other variants for this signal
+                    
                 time.sleep(0.01)
 
         is_death_zone = abs(dist_ema200) < 0.02
@@ -404,6 +420,42 @@ class MT5ConnectionManager:
         print("❌ CRITICAL: Could not connect to MT5 after multiple attempts.")
         return False
 
+    def close_all_positions(self):
+        """Emergency closure of all open positions."""
+        if not self.client: return
+        try:
+            positions = self.client.positions_get()
+            if not positions:
+                print("✅ No active positions to close.")
+                return
+            
+            for p in positions:
+                symbol = p.symbol
+                ticket = p.ticket
+                qty = p.volume
+                side = 1 if p.type == 0 else 0 # MT5_TYPE_BUY=0, MT5_TYPE_SELL=1; Close with opposite
+                
+                request = {
+                    "action": self.client.TRADE_ACTION_DEAL,
+                    "symbol": symbol,
+                    "volume": qty,
+                    "type": side,
+                    "position": ticket,
+                    "price": self.client.symbol_info_tick(symbol).bid if side == 1 else self.client.symbol_info_tick(symbol).ask,
+                    "deviation": 20,
+                    "magic": 99999,
+                    "comment": "Emergency Closure (Guardian)",
+                    "type_time": self.client.ORDER_TIME_GTC,
+                    "type_filling": self.client.ORDER_FILLING_IOC,
+                }
+                res = self.client.order_send(request)
+                if res.retcode == self.client.TRADE_RETCODE_DONE:
+                    print(f"✅ Closed {symbol} #{ticket}")
+                else:
+                    print(f"❌ Failed to close {symbol} #{ticket}: {res.comment}")
+        except Exception as e:
+            print(f"⚠️ Error during emergency closure: {e}")
+
     def ensure_connected(self):
         """Called within the main loop to reconnect if dropped."""
         global MT5_CONNECTED, mt5_client
@@ -411,13 +463,110 @@ class MT5ConnectionManager:
             return self.connect(max_retries=1)
             
         try:
-            self.client.terminal_info()
+            info = self.client.terminal_info()
+            if info is None:
+                # Bridge is up but terminal might be dead
+                return False
             return True
         except:
             print("⚠️ Connection lost! Reconnecting...")
             self.connected = False
             MT5_CONNECTED = False
             return self.connect(max_retries=3)
+
+def check_basket_profit_lock(mt5_client, mt5_manager, bot):
+    """Checks if the combined floating profit exceeds the threshold and closes all if enabled."""
+    global LAST_BASKET_ENABLED, LAST_BASKET_THRESHOLD
+    
+    config_path = "config/basket_config.json"
+    if not os.path.exists(config_path):
+        return
+        
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            
+        enabled = config.get("enabled", False)
+        threshold = config.get("threshold", 5.0)
+        
+        # --- CHANGE DETECTION LOGGING ---
+        if enabled != LAST_BASKET_ENABLED or threshold != LAST_BASKET_THRESHOLD:
+            status_str = "ON" if enabled else "OFF"
+            logger.info(f"🔍 [SYNC] Basket Lock: {status_str} | TP Target: ${threshold:.2f}")
+            LAST_BASKET_ENABLED = enabled
+            LAST_BASKET_THRESHOLD = threshold
+            
+        if not enabled:
+            return
+        
+        acc = mt5_client.account_info()
+        if acc:
+            floating_pnl = float(acc.profit)
+            global CURRENT_BASKET_PEAK, CURRENT_BASKET_FLOOR
+            
+            # --- PEAK TRACKING ---
+            if floating_pnl > CURRENT_BASKET_PEAK:
+                CURRENT_BASKET_PEAK = floating_pnl
+                
+            # --- DYNAMIC FLOOR LOGIC (Anti-Fuga) ---
+            if CURRENT_BASKET_PEAK >= 4.50:
+                if CURRENT_BASKET_FLOOR < 2.50:
+                    logger.info(f"🛡️ [TRAIL] Profit was $4.50+. Safety Floor ARMED at $2.50")
+                    CURRENT_BASKET_FLOOR = 2.50
+            elif CURRENT_BASKET_PEAK >= 3.00:
+                if CURRENT_BASKET_FLOOR < 1.00:
+                    logger.info(f"🛡️ [TRAIL] Profit was $3.00+. Safety Floor ARMED at $1.00")
+                    CURRENT_BASKET_FLOOR = 1.00
+            
+            # --- TRIGGER: TARGET OR FLOOR ---
+            force_close = False
+            close_reason = ""
+            
+            if floating_pnl >= threshold:
+                force_close = True
+                close_reason = f"Target Reached (${floating_pnl:.2f} >= ${threshold:.2f})"
+            elif floating_pnl < CURRENT_BASKET_FLOOR:
+                force_close = True
+                close_reason = f"Trailing Floor Hit (${floating_pnl:.2f} < ${CURRENT_BASKET_FLOOR:.2f})"
+                
+            if force_close:
+                logger.warning(f"🎯 [BASKET LOCK] {close_reason}. Securing gains.")
+                if bot.enabled:
+                    bot.send_message(f"🎯 *BASKET LOCKING*\nReason: `{close_reason}`\nClosing all positions...")
+                
+                mt5_manager.close_all_positions()
+                
+                # --- RESET BASKET STATE ---
+                CURRENT_BASKET_PEAK = 0.0
+                CURRENT_BASKET_FLOOR = -999.0
+                
+                # --- COOLDOWN FIX (0.2.0) ---
+                global LAST_BASKET_RELEASE_TIME
+                time.sleep(5) # Let MT5 sync the closure
+                LAST_BASKET_RELEASE_TIME = time.time()
+                
+                # Log trigger time back to config
+                config["last_trigger"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=4)
+                    
+    except Exception as e:
+        logger.error(f"Error in Basket Profit Lock: {e}")
+
+def get_mt5_data(symbol, timeframe=None, bars=1000):
+    if timeframe is None:
+        timeframe = mt5_client.TIMEFRAME_M1
+        
+    rates = mt5_client.copy_rates_from_pos(symbol, timeframe, 0, bars)
+    if rates is None or len(rates) == 0:
+        logger.warning(f"No MT5 data for {symbol} on {timeframe}")
+        return None
+        
+    # Convert to DataFrame
+    df = pd.DataFrame(rates)
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+    df.set_index('time', inplace=True)
+    return df
 
 mt5_manager = MT5ConnectionManager()
 
@@ -614,6 +763,10 @@ stop_hunt_model = StopHuntModel() if ML_ENABLED else None
 # --- POLIMATA INTEL PERSISTENCE ---
 POLIMATA_INTEL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "config", "polimata_intel.json")
 polimata_intel = {"retrain_count": 0, "last_retrain_date": None}
+# --- BASKET THEORY TELEMETRY (Phase 97) ---
+BASKET_LOG = os.path.join(log_dir, "basket_theory.jsonl")
+basket_lifetime_peak = 0.0
+last_basket_fingerprint = set()
 if os.path.exists(POLIMATA_INTEL_FILE):
     try:
         with open(POLIMATA_INTEL_FILE, 'r') as f:
@@ -855,7 +1008,8 @@ def calculate_atr(df, period=14):
     true_range = ranges.max(axis=1)
     return true_range.rolling(period).mean()
 
-def analyze_hybrid_signal(df):
+def analyze_hybrid_signal(df, symbol, indicators=None):
+    if indicators is None: indicators = {}
     """
     Core Logic: HIVE V5 — Multi-Strategy Engine (Phase 15)
     Evaluates: ZENITH (Cons), HIVE V6 (Agg), and ORION (Pullback).
@@ -1066,6 +1220,38 @@ def get_filling_mode(symbol_info):
         return mt5_client.ORDER_FILLING_RETURN
 
 
+def normalize_symbol_name(raw_name):
+    """
+    Universal Symbol Normalizer (Phase 93 Hardening):
+    Converts broker-specific names (eumnzd, EURUSD.m, etc.) 
+    to standard 6-character root pairs (EURNZD, EURUSD).
+    """
+    if not raw_name: return ""
+    name = raw_name.upper()
+    
+    # 1. Handle common Axi/Broker prefixes
+    if name.startswith("EUM"): # e.g. eumnzd -> EUMNZD -> EURNZD
+        # Specific fix for Axi 'eum' micro prefix
+        name = "EUR" + name[3:]
+        
+    # 2. Strip common suffixes (.m, .mini, .cfd, etc.)
+    for suffix in [".M", ".MINI", ".CFD", ".SB", "!"]:
+        if name.endswith(suffix):
+            name = name[:-len(suffix)]
+            break
+            
+    # 3. Handle Special Case for Gold/Silver
+    if "XAUUSD" in name: return "XAUUSD"
+    if "XAGUSD" in name: return "XAGUSD"
+    
+    # 4. Extract first 6 characters for Forex pairs
+    # (Safe for most standard and suffixed pairs)
+    if len(name) >= 6:
+        return name[:6]
+        
+    return name
+
+
 def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume, comment="Nanobot HIVE V5"):
     """
     Phase 71: Execute Pending Order on Silicon MT5
@@ -1073,6 +1259,11 @@ def execute_mt5_trade(pair, order_type_str, price, sl, tp, volume, comment="Nano
     if not MT5_CONNECTED: return
     
     symbol_mt5 = MT5_SYMBOL_MAP.get(pair, pair) # Fallback to pair if not in map
+    
+    # [NEW] ENSURE SYMBOL LOCK (Extreme Survival)
+    # Prevent duplicate exposure for the same symbol in active or pending orders.
+    if not check_correlation_exposure(pair, order_type_str):
+        return None
     
     # Check Spread & Tick
     info = mt5_client.symbol_info(symbol_mt5)
@@ -1644,9 +1835,10 @@ def main():
             if acc_init:
                 account_peak = float(acc_init.balance)
                 global current_capital, INITIAL_CAPITAL
+                # FOR SMALL CAP: Always reset to live balance on start to avoid "legacy drawdown" lock
                 INITIAL_CAPITAL = account_peak
                 current_capital = account_peak
-                print(f"🏦 QUANTUM RISK RL: Active | Peak: ${account_peak:.2f}")
+                print(f"🏦 QUANTUM RISK RL: Active | Peak (Reset): ${account_peak:.2f}")
 
     # 4. Report Orders
     if MT5_CONNECTED: cleanup_pending_orders()   
@@ -1710,6 +1902,7 @@ def main():
             # Globals for components
             global market_guardian, orchestrator, meta_selector, guardian
             logger.debug("--- [STEP 0] Loop Start ---")
+            iteration_exposed_symbols = set() # Local tracking for current iteration
             
             # 0. Connection Watchdog
             if not mt5_manager.ensure_connected():
@@ -1728,6 +1921,7 @@ def main():
             equity = acc.equity
             balance = acc.balance
             daily_pnl = equity - INITIAL_CAPITAL
+            is_small_cap = balance < 100
             
             # Check for AI Retraining
             check_auto_retrain()
@@ -1791,8 +1985,35 @@ def main():
                         if bot.enabled: 
                             bot.send_message(msg)
                             logger.info("💓 Pulse Sent to Telegram")
+
+                        # --- BASKET THEORY: SHADOW TELEMETRY ---
+                        current_fingerprint = {f"{p.symbol}_{p.ticket}" for p in positions} if positions else set()
+                        global basket_lifetime_peak, last_basket_fingerprint
+                        
+                        if current_fingerprint != last_basket_fingerprint:
+                            # Basket changed (trade added or removed) -> Reset or Log Transition
+                            if last_basket_fingerprint:
+                                logger.info(f"📊 [BASKET_THEORY] Basket Changed. Previous Peak reached: ${basket_lifetime_peak:.2f}")
+                            basket_lifetime_peak = 0.0
+                            last_basket_fingerprint = current_fingerprint
+                        
+                        if positions:
+                            current_basket_pnl = sum([p.profit + getattr(p, 'swap', 0.0) + getattr(p, 'commission', 0.0) for p in positions])
+                            basket_lifetime_peak = max(basket_lifetime_peak, current_basket_pnl)
+                            
+                            # Shadow Log (Silent)
+                            with open(BASKET_LOG, "a") as f:
+                                log_entry = {
+                                    "time": datetime.now().isoformat(),
+                                    "pnl": round(current_basket_pnl, 4),
+                                    "peak": round(basket_lifetime_peak, 4),
+                                    "count": len(positions),
+                                    "equity": equity
+                                }
+                                f.write(json.dumps(log_entry) + "\n")
+                                
                 except Exception as e:
-                    logger.error(f"Pulse Error: {e}")
+                    logger.error(f"Pulse/Telemetry Error: {e}")
 
             # --- [UNIVERSAL GUARDIAN v4.1: ACTIVE PROTECTIONS - EVERY ITERATION] ---
             # 1. Dynamic Profit Lock (Trinquete Escalonado)
@@ -1805,17 +2026,26 @@ def main():
                 continue
 
             # 2. Hard Fuse Safety (Daily Limit)
-            hard_limit = INITIAL_CAPITAL * (1 - (guardian.daily_limit_pct * 0.75 / 100))
-            if equity < hard_limit:
-                logger.error(f"💀 [HARD FUSE] Equity near Max Daily Loss. Emergency Shutdown!")
-                bot.send_message(f"💀 *CORTE DE EMERGENCIA*: Se ha alcanzado el 75% del límite de pérdida diaria permisible. Apagado total del sistema.")
-                mt5_manager.close_all_positions()
-                time.sleep(3600 * 24)
-                continue
+            # EXTREME SURVIVAL: Disable Hard Fuse for accounts < $100 to give them "one last breath"
+            if INITIAL_CAPITAL >= 100:
+                hard_limit_pct = (guardian.daily_limit_pct * 0.75)
+                hard_limit = INITIAL_CAPITAL * (1 - (hard_limit_pct / 100))
+                
+                if equity < hard_limit:
+                    sleep_duration = 3600 * 24 
+                    logger.error(f"💀 [HARD FUSE] Equity (${equity:,.2f}) hit Limit (${hard_limit:,.2f} | {hard_limit_pct}%). Safety Cool-off: 24h")
+                    bot.send_message(f"💀 *HARD FUSE*: Límite diario alcanzado. Pausando por 24h.")
+                    mt5_manager.close_all_positions()
+                    time.sleep(sleep_duration)
+                    continue
+            else:
+                # Still log the status for monitoring
+                logger.info(f"🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: ${equity:,.2f}")
 
             # 3. Harvest Mode (Pase de Cuenta)
-            FTMO_TARGET = INITIAL_CAPITAL * 1.10
-            if equity >= FTMO_TARGET:
+            # ONLY FOR FTMO CHALLENGES: Disable for survival accounts < $100
+            if INITIAL_CAPITAL >= 100 and (equity >= INITIAL_CAPITAL * 1.10):
+                FTMO_TARGET = INITIAL_CAPITAL * 1.10
                 peak_post = max(getattr(bot, 'peak_equity_post_target', equity), equity)
                 bot.peak_equity_post_target = peak_post
                 extra = peak_post - FTMO_TARGET
@@ -1835,6 +2065,10 @@ def main():
             
             if market_guardian:
                 market_guardian.check_and_protect()
+            
+            # --- PHASE 75.1: BASKET PROFIT LOCK (Dynamic Security) ---
+            check_basket_profit_lock(mt5_client, mt5_manager, bot)
+            
             logger.debug("--- [STEP 3] Guardian Checked ---")
 
             # --- PHASE 76: ALL-WEATHER ORCHESTRATOR ---
@@ -1932,9 +2166,29 @@ def main():
                 time.sleep(10) # Minimal wait to allow manage_active_trades to cycle
                 continue
             
+            # --- PHASE 99: BASKET COOLDOWN (Anti-Carousel) ---
+            global LAST_BASKET_RELEASE_TIME
+            cooldown_period = 1800 # 30 minutes
+            if time.time() - LAST_BASKET_RELEASE_TIME < cooldown_period:
+                remaining = int(cooldown_period - (time.time() - LAST_BASKET_RELEASE_TIME))
+                if remaining % 300 == 0: # Log every 5 mins
+                    logger.info(f"⏳ [COOLDOWN] Basket Recently Locked. Skipping scanning for {remaining}s")
+                time.sleep(5)
+                continue
+
             for pair in ASSET_MAP.keys():
+                symbol = ASSET_MAP.get(pair) # Define early
+                
+                # --- PHASE 92: SMALL CAP PROTECTION (METALS & CRYPTO BLOCK) ---
+                is_metal = any(k in symbol.upper() for k in ["XAU", "XAG"])
+                is_crypto = any(k in symbol.upper() for k in ["BTC", "ETH", "SOL", "XRP", "LTC", "ADA", "DOT", "LINK", "DOGE"])
+                
+                if (is_metal or is_crypto) and INITIAL_CAPITAL < 100000:
+                    # Explicitly skip volatile assets for accounts under 100k.
+                    logger.debug(f"🛡️ [SMALL CAP SHIELD] Skipping {symbol} (Volatile Asset on Small Capital)")
+                    continue
+
                 current_hour_tag = datetime.now().strftime("%Y-%m-%d %H")
-                symbol = ASSET_MAP.get(pair) # Now internal map is MT5 compatible
                 try:
                     # 🍏 NATIVE FTMO DATA
                     data = get_mt5_data(symbol, bars=200)
@@ -1943,10 +2197,33 @@ def main():
                     # data.columns = data.columns.str.lower() # Already lowered in helper
                     if len(data) < 50: continue
                     
-                    triggers = analyze_hybrid_signal(data)
+                    triggers = analyze_hybrid_signal(data, symbol)
                     
                     for sig, strategy, row, source_tag in triggers:
                         if sig != 0:
+                            # --- PHASE 93: UNIQUE SYMBOL LOCK (NO DUPLICATES) ---
+                            # Check INSIDE trigger loop to prevent race conditions within same iteration
+                            if INITIAL_CAPITAL < 100000:
+                                try:
+                                    cur_pos = mt5_client.positions_get()
+                                    cur_ord = mt5_client.orders_get()
+                                    
+                                    # Normalize all current exposures to their root names
+                                    total_exp_roots = {normalize_symbol_name(s) for s in iteration_exposed_symbols}
+                                    if cur_pos: 
+                                        total_exp_roots.update([normalize_symbol_name(p.symbol) for p in cur_pos])
+                                    if cur_ord: 
+                                        total_exp_roots.update([normalize_symbol_name(o.symbol) for o in cur_ord])
+                                    
+                                    sig_root = normalize_symbol_name(symbol)
+                                    
+                                    if sig_root in total_exp_roots:
+                                        logger.info(f"🔒 [SYMBOL LOCK] Blocking {strategy} on {symbol} (Root: {sig_root}): Exposure detected.")
+                                        continue
+                                except Exception as e:
+                                    logger.error(f"Error in Symbol Lock Logic: {e}")
+                                    pass
+
                             # --- HOURLY RE-ENTRY CHECK (Per Source for Lab Collection) ---
                             signal_key = f"{pair}_{source_tag}"
                             last_hour_tag = last_signal_date.get(signal_key)
@@ -1954,6 +2231,23 @@ def main():
                             if last_hour_tag == current_hour_tag:
                                 # We already processed this pair this hour.
                                 continue
+                            
+                            # --- PERSISTENT ATTEMPT BLOCK (Phase 98) ---
+                            # Evita re-intentar el mismo par si la ejecución falló silenciosamente
+                            last_signal_date[signal_key] = current_hour_tag 
+                            
+                            # --- SMALL CAP SAFETY: Concurrency Limit ---
+                            if is_small_cap:
+                                try:
+                                    positions = mt5_client.positions_get()
+                                    active_count = len(positions) if positions else 0
+                                    # EXTREME SURVIVAL: Up to 3 trades allowed to ensure variability
+                                    max_concurrent = 3 
+                                    if active_count >= max_concurrent:
+                                        logger.warning(f"⚠️ [CONCURRENCY LIMIT] {active_count}/{max_concurrent} trades active. Skipping {pair} to protect extreme margin.")
+                                        continue
+                                except Exception as e:
+                                    logger.error(f"Error checking concurrency: {e}")
 
                             # 0. Per-Symbol Hard Stop Check
                             sym_pnl = symbol_pnl_map.get(symbol, 0)
@@ -2039,10 +2333,12 @@ def main():
                                             symbol=pair
                                         )
                                         
-                                        # --- MEGA GRID SNIPER PROBABILITY FILTER (> 75%) ---
+                                        # --- SMALL CAPITAL PROFILE (Axi $27) ---
+                                        # Increase probability threshold to 75% for 0.01 lot safety
                                         is_sniper_valid = True
-                                        if prob_success < 0.75:
-                                            logger.info(f"⚖️ [SNIPER] {pair} Prob={prob_success:.2%} (Needs > 75%) -> Data Grid Only")
+                                        prob_threshold = 0.75 if float(acc.balance) < 100 else 0.75
+                                        if prob_success < prob_threshold:
+                                            logger.info(f"⚖️ [SNIPER VETO] {pair} Prob={prob_success:.2%} (Threshold {prob_threshold:.0%}) -> Low liquidity for small cap")
                                             is_sniper_valid = False
                                         
                                         if bayesian_mult <= 0:
@@ -2105,24 +2401,24 @@ def main():
                                         rr = 1.5
                                         sniper_mode_name = "LHN_NEME_POLIMATA_H1"
                                 else:
-                                    # 1. Fase Nocturna / Asiática (00:00 a 08:59 y 20:00+): NEMESIS
-                                    if (0 <= current_mt5_hour <= 8) or current_mt5_hour >= 20:
-                                        actual_sig = -sig # NEMESIS (Market in Range, fake breakouts)
-                                        rr = 1.5
-                                        sniper_mode_name = "LHN_NEMESIS_SNIPER_H1"
-                                    # 2. Fase de Caza Inicios de Londres/Europa (09:00 - 09:59): ALFA
-                                    elif current_mt5_hour == 9 or current_mt5_hour == 10:
-                                        # Data Analytics showed ALFA dominates at 9:00. Let's include 9-10 in ALFA mode.
-                                        actual_sig = sig # ALFA (Real Breakout)
-                                        rr = 1.5
-                                        sniper_mode_name = "LHN_ALFA_SNIPER_H1"
-                                    # 3. Fase de Silencio (NY Session & Choppy Time): OFF
-                                    else:
-                                        actual_sig = sig
-                                        rr = 1.5
-                                        sniper_mode_name = "LHN_OFFLINE"
-                                        is_sniper_valid = False # 🛑 Bloqueo total
-                                        logger.info(f"🛑 [TIME FENCING] Sniper OFF during Choppy Hours ({current_mt5_hour}:00). Grid Only.")
+                                        # --- RISK-ADAPTIVE STRATEGY LOCK ---
+                                        # For small capital, force Hunter X and Chameleon 2.0 selectivity
+                                        # is_small_cap defined earlier in scope
+                                        
+                                        if (0 <= current_mt5_hour <= 8) or current_mt5_hour >= 20:
+                                            actual_sig = -sig # NEMESIS
+                                            rr = 1.5
+                                            sniper_mode_name = "AXI_NEMESIS_ELITE" if is_small_cap else "LHN_NEMESIS_SNIPER_H1"
+                                        elif current_mt5_hour == 9 or current_mt5_hour == 10:
+                                            actual_sig = sig # ALFA
+                                            rr = 1.5
+                                            sniper_mode_name = "AXI_ALFA_ELITE" if is_small_cap else "LHN_ALFA_SNIPER_H1"
+                                        else:
+                                            actual_sig = sig
+                                            rr = 1.5
+                                            sniper_mode_name = "AXI_OFFLINE" if is_small_cap else "LHN_OFFLINE"
+                                            is_sniper_valid = False 
+                                            logger.info(f"🛑 [TIME FENCING] Sniper OFF during Choppy Hours ({current_mt5_hour}:00).")
                                     
                                 sl_dist = float(row['atr']) * 1.5
                                 tp_dist = sl_dist * rr # Hardcoded to 1.5 RR
@@ -2155,7 +2451,8 @@ def main():
                                 # 1. Execute Polimata Sniper (Primary)
                                 if is_sniper_valid:
                                     res_p = execute_mt5_trade(pair, c_order_type, float(entry_price), c_sl, c_tp, lots_calculated, comment=sniper_mode_name)
-                                    if res_p and res_p.retcode != 10018:
+                                    if res_p and res_p.retcode in [mt5_client.TRADE_RETCODE_DONE, mt5_client.TRADE_RETCODE_PLACED]:
+                                        iteration_exposed_symbols.add(pair.upper()) # Track locally
                                         if bot.enabled:
                                             bot.send_message(f"🧠 *{sniper_mode_name} ACTIVATED*\nPair: `{pair}`\nRisk: 0.5% | Prob: {prob_success:.2%}")
 
@@ -2180,7 +2477,8 @@ def main():
                                     cham_order = "BS (Buy Stop)" if cham_sig == 1 else "SS (Sell Stop)"
                                     
                                     res_c = execute_mt5_trade(pair, cham_order, float(entry_price), cham_sl, cham_tp, lots_calculated, comment=cham_mode)
-                                    if res_c and res_c.retcode != 10018:
+                                    if res_c and res_c.retcode in [mt5_client.TRADE_RETCODE_DONE, mt5_client.TRADE_RETCODE_PLACED]:
+                                        iteration_exposed_symbols.add(pair.upper()) # Track locally
                                         if bot.enabled:
                                             bot.send_message(f"🦎 *{cham_mode} BENCHMARK*\nPair: `{pair}`\nRisk: 0.5% | Mode: Session Logic")
 
@@ -2268,23 +2566,38 @@ def main():
                                 else:
                                     lots_kaido = 0.02
 
-                                kaido_variants = [
-                                    {"name": "KAIDO_15R", "rr": 1.5},
-                                    {"name": "KAIDO_20R", "rr": 2.0},
-                                    {"name": "KAIDO_30R", "rr": 3.0},
-                                    {"name": "KAIDO_TRAILING", "rr": 4.0} # Inicial largo, gestionado por BE
-                                ]
+                                # --- KAIDO VARIANT RELEASE (PROB > 75% for Growth / > 85% for Survive) ---
+                                kaido_activated = False
+                                kaido_variants = []
+                                
+                                if not is_small_cap:
+                                    if is_sniper_valid: # Standard Kaido: 4 variations
+                                        kaido_variants = [
+                                            {"name": "KAIDO_15R", "rr": 1.5},
+                                            {"name": "KAIDO_20R", "rr": 2.0},
+                                            {"name": "KAIDO_30R", "rr": 3.0},
+                                            {"name": "KAIDO_TRAILING", "rr": 4.0}
+                                        ]
+                                        kaido_activated = True
+                                else:
+                                    # --- KAIDO SURVIVE (Axi $22 Edition) ---
+                                    # More strict threshold (85%) and only 1 safe variant at 0.01
+                                    if prob_val > 0.85 and is_sniper_valid:
+                                        kaido_variants = [{"name": "KAIDO_SURVIVE_15R", "rr": 1.5}]
+                                        lots_kaido = 0.01
+                                        kaido_activated = True
 
-                                for kv in kaido_variants:
-                                    k_tp_dist = sl_dist * kv["rr"]
-                                    k_sl = float(entry_price) - sl_dist if hybrid_sig == 1 else float(entry_price) + sl_dist
-                                    k_tp = float(entry_price) + k_tp_dist if hybrid_sig == 1 else float(entry_price) - k_tp_dist
-                                    k_order = "BS (Buy Stop)" if hybrid_sig == 1 else "SS (Sell Stop)"
-                                    
-                                    res_k = execute_mt5_trade(pair, k_order, float(entry_price), k_sl, k_tp, lots_kaido, comment=kv["name"])
-                                    if res_k and res_k.retcode != 10018:
-                                        if bot.enabled:
-                                            bot.send_message(f"🐉 *{kv['name']} RELEASING*\nPair: `{pair}`\nRR: {kv['rr']}:1 | Risk: 1% ($ {risk_kaido:.2f})")
+                                if kaido_activated:
+                                    for kv in kaido_variants:
+                                        k_tp_dist = sl_dist * kv["rr"]
+                                        k_sl = float(entry_price) - sl_dist if hybrid_sig == 1 else float(entry_price) + sl_dist
+                                        k_tp = float(entry_price) + k_tp_dist if hybrid_sig == 1 else float(entry_price) - k_tp_dist
+                                        k_order = "BS (Buy Stop)" if hybrid_sig == 1 else "SS (Sell Stop)"
+                                        
+                                        res_k = execute_mt5_trade(pair, k_order, float(entry_price), k_sl, k_tp, lots_kaido, comment=kv["name"])
+                                        if res_k and res_k.retcode != 10018:
+                                            if bot.enabled:
+                                                bot.send_message(f"🐉 *{kv['name']} RELEASING*\nPair: `{pair}`\nRR: {kv['rr']}:1 | Risk: 1% ($ {risk_kaido:.2f})")
 
                                 # --- MASSIVE DATA COLLECTION (MEGA GRID) ---
                                 # Check if Mega Grid is enabled in config
@@ -2295,7 +2608,7 @@ def main():
                                         mega_grid_enabled = tmp_cfg.get("mega_grid_enabled", True)
                                 except: pass
 
-                                if mega_grid_enabled:
+                                if mega_grid_enabled and not is_small_cap:
                                     dist_ema200 = (float(entry_price) - row['ema_200']) / row['ema_200']
                                     
                                     virtual_manager.register_signal_pool(
