@@ -32,9 +32,12 @@ class MegaGridTracker:
         global RISK_PER_TRADE, current_capital, ASSET_MAP
         
         # 0. Cargar Configuración Táctica Localizada
+        # [FIX v4.6.0] ELIMINADO: load_tactical_config() ya se llama en el loop
+        # principal ANTES de execute_signal. Llamarla aquí de nuevo causaba un
+        # bloqueo de I/O (lectura de disco) justo durante la fase de envío de
+        # orden, saturando el hilo y causando TERMINAL TIMEOUT.
         pair = signal.symbol
-        tactical_config, _ = load_tactical_config() # Solo por si hubo cambio de rol manual
-        pair_settings = tactical_config.get(pair, {"strategy_mode": "AUTO"})
+        pair_settings = _last_tactical_config.get(pair, {"strategy_mode": "AUTO"})
         
         # 1. DETERMINAR ROL (NEM1/NEM2)
         # Prioridad: Override Manual > Dirección de Señal
@@ -149,6 +152,10 @@ STRATEGY_HUB_ENABLED = True
 STRATEGY_HUB = None
 mega_grid_tracker = None
 GLOBAL_RESUME_TIME = 0
+# [FIX v4.6.0] Cache de configuración para evitar I/O durante ejecución de órdenes
+_last_tactical_config = {}
+import threading
+_execution_lock = threading.Lock()  # Bloqueo de concurrencia para Puente Silicon
 
 # Initialize StrategyHub early
 try:
@@ -697,11 +704,20 @@ class MT5ConnectionManager:
         try:
             info = self.client.terminal_info()
             if info is None:
-                # Bridge is up but terminal might be dead
-                return False
+                # [FIX v4.6.0] Bridge corrupto: shutdown completo antes de reinit
+                # para limpiar handles y memoria cache del terminal.
+                print("⚠️ Handle corrupto detectado. Ejecutando shutdown limpio...")
+                try: self.client.shutdown()
+                except: pass
+                self.client = None
+                self.connected = False
+                MT5_CONNECTED = False
+                return self.connect(max_retries=3)
             return True
         except:
             print("⚠️ Connection lost! Reconnecting...")
+            try: self.client.shutdown()
+            except: pass
             self.connected = False
             MT5_CONNECTED = False
             return self.connect(max_retries=3)
@@ -2496,9 +2512,13 @@ def main():
                 continue
 
 
-            # --- [ALPHA SUPREMO PIPELINE V4.1.5] ---
-            # 1. Cargar Configuración de Combate (Activos + Riesgo)
+            # --- [ALPHA SUPREMO PIPELINE V4.6.0] ---
+            # 1. Cargar Configuración de Combate (ANTES de cualquier operación MT5)
+            # La lectura de disco ocurre AQUÍ, lejos del Puente Silicon.
             tactical_config, requested_risk = load_tactical_config()
+            # Sincronizar al cache global para que execute_signal no haga I/O propio
+            global _last_tactical_config
+            _last_tactical_config = tactical_config
             
             # 2. ESCUDO DE SEGURIDAD: Sincronización y Blindaje de Riesgo
             HARD_LIMIT_RISK = 0.02 # 2.0% (Límite Institucional FTMO/Prop)
