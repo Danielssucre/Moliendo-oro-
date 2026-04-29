@@ -28,13 +28,16 @@ for p in [PROJECT_ROOT, SRC_DIR]:
 # --- [V6.2.0] SURVIVAL PERSISTENCE (FTMO IRON DOME READY) ---
 try:
     from nanobot.state_persistence import StatePersistence
+    from nanobot.volatility_engine import VolatilityEngine
     persistence_handler = StatePersistence()
 except ImportError:
     # Fallback to absolute if path hack somehow localizes different
     from src.nanobot.state_persistence import StatePersistence
     persistence_handler = StatePersistence()
+    from src.nanobot.volatility_engine import VolatilityEngine
 
-# --- V3.8 INSTITUTIONAL BODY ---
+# --- GLOBAL COMPONENTS ---
+vol_engine = None # Initialized in main()
 class AlphaSignal:
     def __init__(self, symbol, direction, confidence, strategy_tag, edge_type, suggested_rr, regime):
         self.symbol, self.direction, self.confidence = symbol, direction, confidence
@@ -97,16 +100,15 @@ class MegaGridTracker:
         # 3. GENERAR POOL DE PRECISIÓN (Masa Pesada OMEGA+)
         tick = self.client.symbol_info_tick(symbol_mt5)
         
-        # [v6.8.5] FIX GEOMETRÍA DE INVERSIÓN NEM2 
-        # Calcular el final_side ANTES de seleccionar Bid/Ask para evitar anclaje cruzado de Spread.
-        nem_multiplier = 1 if nem_type == "NEM1" else -1
-        final_side = signal.direction * nem_multiplier
+        # [v7.0.0] FIX GEOMETRÍA: NEME Bug de Doble Inversión
+        # La dirección enviada por StrategyHub (signal.direction) es SAGRADA.
+        final_side = signal.direction
         entry_price = tick.ask if final_side == 1 else tick.bid
         
         is_scout_mode = getattr(signal, 'force_scout', False)
         levels = strategy.generate_pool(
             symbol=symbol_mt5, entry_price=entry_price, atr=atr_val,
-            direction=signal.direction, total_risk=RISK_PER_TRADE, 
+            direction=final_side, total_risk=RISK_PER_TRADE, 
             is_scout=is_scout_mode, nem_type=nem_type
         )
 
@@ -220,11 +222,17 @@ def affinity_harvester_daemon(mt5_client, logger):
                 continue
                 
             try:
-                from_date = datetime.now() - timedelta(days=2) # Ver 48h para data inicial
+                from_date = datetime.now() - timedelta(days=7) # Ver 7 días para data inicial
                 history_deals = mt5_client.history_deals_get(from_date, datetime.now())
                 
                 if not history_deals:
                     continue
+                    
+                # [v7.5.2] Mapeo de Position ID -> Original Comment (Anti SL/TP overwrite)
+                pos_to_comment = {}
+                for deal in history_deals:
+                    if getattr(deal, 'entry', 0) == 0: # Entry IN
+                        pos_to_comment[deal.position_id] = getattr(deal, 'comment', "")
                     
                 # Cargar mapa actual
                 map_data = {}
@@ -235,21 +243,19 @@ def affinity_harvester_daemon(mt5_client, logger):
                 
                 changes = False
                 for deal in history_deals:
-                    comment = getattr(deal, 'comment', "")
+                    # Solo procesar trades cerrados (entry out)
+                    if getattr(deal, 'entry', 0) != 1: continue 
+                    
+                    # Recuperar comentario original (evita pérdida por SL/TP overwrite)
+                    comment = pos_to_comment.get(deal.position_id, getattr(deal, 'comment', ""))
                     ticket = str(deal.ticket)
                     
-                    # ADN: L1_SCOUT_BTCUSD_NEM2_R1500 o L1_HEAVY_...
                     is_scout = "L1_SCOUT" in comment
                     is_heavy = "L1_HEAVY" in comment
                     
-                    if not (is_scout or is_heavy): 
-                        continue # IGNORAR RUIDO: Solo procesar Pure Data (Nivel 1 Trazador)
-                        
-                    pair = deal.symbol
+                    if not (is_scout or is_heavy): continue
                     
-                    # Solo procesar trades cerrados (entry out)
-                    if getattr(deal, 'entry', 0) != 1: continue 
-
+                    pair = deal.symbol
                     if pair not in map_data: map_data[pair] = {}
                     
                     # Determinar Rol
@@ -458,13 +464,12 @@ def load_tactical_config():
                 tactical = json.load(f)
         except: pass
 
-    # 2. Leer Riesgo Maestro (Config 8000)
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as f:
-                cfg = json.load(f)
-                global_risk = cfg.get("risk_management", {}).get("risk_per_trade", 0.004)
-        except: pass
+    # 2. Leer Riesgo Maestro (Config 8000) - SINCRO DINÁMICA CON TRUST TIERS
+    try:
+        # El riesgo ya no es estático del JSON, sino dinámico según el progreso del Bot
+        global_risk = persistence_handler.get_trust_risk_pct()
+    except Exception as e:
+        global_risk = 0.0015 # Safe Fallback (Tier 1)
 
     return tactical, global_risk
 CURRENT_BASKET_PEAK = 0.0    # Trailing peak tracking
@@ -866,7 +871,7 @@ class MT5ConnectionManager:
 
 def check_basket_profit_lock(mt5_client, mt5_manager, bot):
     """Checks if the combined floating profit exceeds the threshold and closes all if enabled."""
-    global LAST_BASKET_ENABLED, LAST_BASKET_THRESHOLD, INITIAL_CAPITAL
+    global LAST_BASKET_ENABLED, LAST_BASKET_THRESHOLD, INITIAL_CAPITAL, vol_engine, CURRENT_BASKET_PEAK, CURRENT_BASKET_FLOOR
     
     config_path = "config/basket_config.json"
     if not os.path.exists(config_path):
@@ -898,21 +903,32 @@ def check_basket_profit_lock(mt5_client, mt5_manager, bot):
         acc = mt5_client.account_info()
         if acc:
             floating_pnl = float(acc.profit)
-            global CURRENT_BASKET_PEAK, CURRENT_BASKET_FLOOR
+            
+            # --- [v8.0.0] CAZADOR DINÁMICO (Anclado a Volatilidad) ---
+            active_symbols = list(set([p.symbol for p in positions_proxy])) if 'positions_proxy' in locals() else []
+            if not active_symbols:
+                positions_tmp = mt5_client.positions_get()
+                active_symbols = list(set([p.symbol for p in positions_tmp])) if positions_tmp else []
+            
+            vol_factor = vol_engine.get_account_volatility_factor(active_symbols) if vol_engine else 1.0
             
             # --- PEAK TRACKING ---
             if floating_pnl > CURRENT_BASKET_PEAK:
                 CURRENT_BASKET_PEAK = floating_pnl
                 
             # --- DYNAMIC FLOOR LOGIC (Trailing Safety) ---
-            # Si el beneficio alcanza el 75% del target, armamos un piso del 50%
-            guard_trigger = target_usd * 0.75
-            guard_floor = target_usd * 0.50
+            # La distancia del trailing ahora es dinámica: base 0.25% * vol_factor
+            base_dist_usd = start_balance * 0.0025 
+            dynamic_dist_usd = base_dist_usd * vol_factor
+            
+            guard_trigger = target_usd * 0.70 # Activamos el trailing al 70% del objetivo
             
             if CURRENT_BASKET_PEAK >= guard_trigger:
-                if CURRENT_BASKET_FLOOR < guard_floor:
-                    logger.info(f"🛡️ [TRAIL] Profit reached 75% of target (${guard_trigger:,.2f}). Safety Floor ARMED at ${guard_floor:,.2f}")
-                    CURRENT_BASKET_FLOOR = guard_floor
+                new_floor = CURRENT_BASKET_PEAK - dynamic_dist_usd
+                if new_floor > CURRENT_BASKET_FLOOR:
+                    if int(time.time()) % 60 < 5: # Log cada minuto aprox
+                        logger.info(f"🏹 [HUNTER] Peak ${CURRENT_BASKET_PEAK:.2f}. Trailing Floor elevado a ${new_floor:.2f} (Vol Factor: {vol_factor:.2f}x)")
+                    CURRENT_BASKET_FLOOR = new_floor
             
             # --- TRIGGER: TARGET OR FLOOR ---
             force_close = False
@@ -928,23 +944,38 @@ def check_basket_profit_lock(mt5_client, mt5_manager, bot):
             if force_close:
                 logger.warning(f"🎯 [BASKET LOCK] {close_reason}. Securing gains for the day.")
                 
-                # --- [v6.7.0] PERFORMANCE EVALUATION ---
-                # Enviamos el profit al evaluador para potenciar el ascenso de rango.
-                persistence_handler.evaluate_performance(floating_pnl)
-                
-                if bot and hasattr(bot, 'send_basket_report'):
-                    bot.send_basket_report(
-                        reason=close_reason,
-                        profit=floating_pnl,
-                        initial_capital=INITIAL_CAPITAL
-                    )
-                
                 # EXECUTE: Close all trades
-                mt5_manager.close_all_trades()
+                mt5_manager.close_all_positions_atomic()
+                
+                # --- [v6.9.0] POST-LIQUIDATION VERIFICATION (MESA LIMPIA) ---
+                # Recalculamos el PnL con el balance real tras cerrar todo.
+                acc_final = mt5_client.account_info()
+                if acc_final:
+                    final_pnl = acc_final.balance - INITIAL_CAPITAL
+                    is_clean = mt5_client.positions_total() == 0
+                    
+                    if is_clean:
+                        logger.info(f"🏆 [TARGET REACHED] Mesa Limpia. PnL Final: ${final_pnl:,.2f}")
+                        persistence_handler.state["daily_goal_reached"] = True
+                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=True)
+                    else:
+                        logger.error("⚠️ [CLEAN DESK FAIL] Quedaron posiciones abiertas tras liquidación. Promoción denegada.")
+                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=False)
+                    
+                    if bot and hasattr(bot, 'send_basket_report'):
+                        bot.send_basket_report(
+                            reason=close_reason,
+                            profit=final_pnl,
+                            initial_capital=INITIAL_CAPITAL
+                        )
+                else:
+                    logger.error("❌ [FATAL] No se pudo obtener info de cuenta tras liquidación. Abortando evaluación de méritos.")
+
                 
                 # --- RESET BASKET STATE ---
                 CURRENT_BASKET_PEAK = 0.0
                 CURRENT_BASKET_FLOOR = 0.0
+
                 
                 # --- COOLDOWN FIX (0.2.0) ---
                 global LAST_BASKET_RELEASE_TIME
@@ -1421,6 +1452,67 @@ def calculate_atr(df, period=14):
     ranges = pd.concat([high_low, high_close, low_close], axis=1)
     true_range = ranges.max(axis=1)
     return true_range.rolling(period).mean()
+
+def calculate_core_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    [NEME FIX] Inyecta los indicadores matemáticos necesarios para que 
+    ForexInfantry y StrategyHub puedan "ver" el mercado.
+    """
+    if df.empty or len(df) < 50:
+        return df
+
+    # EMAs
+    df['ema_5'] = df['close'].ewm(span=5, adjust=False).mean()
+    df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
+    df['ema_13'] = df['close'].ewm(span=13, adjust=False).mean()
+    df['ema_15'] = df['close'].ewm(span=15, adjust=False).mean()
+    df['ema_200'] = df['close'].ewm(span=200, adjust=False).mean()
+    df['ema_8'] = df['close'].ewm(span=8, adjust=False).mean()
+    df['ema_16'] = df['close'].ewm(span=16, adjust=False).mean()
+    df['ema_12'] = df['close'].ewm(span=12, adjust=False).mean()
+    df['ema_26'] = df['close'].ewm(span=26, adjust=False).mean()
+
+    # ATR
+    high_low = df['high'] - df['low']
+    high_close = abs(df['high'] - df['close'].shift())
+    low_close = abs(df['low'] - df['close'].shift())
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    df['atr'] = tr.rolling(14).mean()
+
+    # RSI
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    rs = gain / (loss + 1e-9)
+    df['rsi'] = 100 - (100 / (1 + rs))
+
+    # ADX
+    plus_dm = df['high'].diff()
+    minus_dm = df['low'].diff()
+    plus_dm[plus_dm < 0] = 0
+    minus_dm[minus_dm > 0] = 0
+    minus_dm = abs(minus_dm)
+    tr_smooth = tr.rolling(14).mean()
+    plus_di = 100 * (plus_dm.rolling(14).mean() / (tr_smooth + 1e-9))
+    minus_di = 100 * (minus_dm.rolling(14).mean() / (tr_smooth + 1e-9))
+    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di + 1e-9)
+    df['adx'] = dx.rolling(14).mean()
+
+    # --- [CRYPTO LAB SUPPORT] ---
+    # Bollinger Bands (Necesario para Squeeze Momentum)
+    sma_20 = df['close'].rolling(window=20).mean()
+    std_20 = df['close'].rolling(window=20).std()
+    df['bb_upper'] = sma_20 + (std_20 * 2)
+    df['bb_lower'] = sma_20 - (std_20 * 2)
+
+    # Alias de Volumen (CryptoLab busca 'volume')
+    if 'tick_volume' in df.columns:
+        df['volume'] = df['tick_volume']
+    
+    # Rellenar NaNs iniciales por la ventana de cálculo
+    df.bfill(inplace=True)
+
+    return df
 
 def analyze_hybrid_signal(df, symbol, indicators=None):
     if indicators is None: indicators = {}
@@ -2047,6 +2139,27 @@ def manage_active_trades(bot_brain):
                 atr = 0.002 # Fallback
                 df = pd.DataFrame()
             
+            # --- [v8.0.0] ESCUDO ASIMÉTRICO (Individual BE @ 1.5 ATR) ---
+            if vol_engine:
+                atr_pips = vol_engine.get_symbol_atr_pips(symbol)
+                profit_pips = (p.price_current - p.price_open) / info.point if p.type == 0 else (p.price_open - p.price_current) / info.point
+                
+                if profit_pips > (1.5 * atr_pips):
+                    be_offset = max(10, info.trade_stops_level + 5)
+                    be_price = p.price_open + (be_offset * info.point) if p.type == 0 else p.price_open - (be_offset * info.point)
+                    
+                    sl_at_be = (p.type == 0 and p.sl >= be_price) or (p.type == 1 and p.sl <= be_price and p.sl > 0)
+                    if not sl_at_be:
+                        logger.warning(f"🛡️ [ASYM SHIELD] {symbol} #{p.ticket} profit ({profit_pips:.1f}) > 1.5 ATR ({1.5*atr_pips:.1f}). Moviendo SL a BE.")
+                        sl_request = {
+                            "action": int(mt5_client.TRADE_ACTION_SLTP),
+                            "symbol": str(symbol),
+                            "sl": float(be_price),
+                            "tp": float(p.tp),
+                            "position": int(p.ticket)
+                        }
+                        mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
+
             # 🎯 DANIEL'S PARTIAL EXIT (1.3R): 50% Close + Move to BE
             entry_p = p.price_open
             tp_p = p.tp
@@ -2356,6 +2469,13 @@ def main():
             global market_guardian, orchestrator, meta_selector, guardian, GLOBAL_RESUME_TIME, STRATEGY_HUB_ENABLED, STRATEGY_HUB
             logger.debug("--- [STEP 0] Loop Start ---")
 
+            # --- [v8.0.0] PROTOCOLO DE HIBERNACIÓN ---
+            if persistence_handler.state.get("daily_goal_reached", False):
+                if int(time.time()) % 1800 < 5:
+                    logger.info("🐻 [HIBERNATION] Objetivo diario cumplido. Búnker cerrado hasta zona segura (02:00 UTC).")
+                time.sleep(5)
+                continue
+
             # --- [V3.7 GLOBAL GATEKEEPER] ---
             if time.time() < GLOBAL_RESUME_TIME:
                 rem_s = int(GLOBAL_RESUME_TIME - time.time())
@@ -2387,6 +2507,10 @@ def main():
                 logger.warning("⚠️ Failed to get account info. Skipping iteration.")
                 time.sleep(1)
                 continue
+            
+            # [v7.5.1] Get current positions for Risk & Basket Logic
+            active_positions = mt5_client.positions_get() or []
+            active_pos_count = len(active_positions)
                 
             equity = acc.equity
             balance = acc.balance
@@ -2425,76 +2549,98 @@ def main():
 
             # --- [V3.7 KAIZEN LOCK: ATOMIC PURGE] ---
             profit_floor = guardian.get_profit_lock_floor(equity)
-            if profit_floor and equity < profit_floor:
+            if profit_floor and equity < profit_floor and active_pos_count > 0:
                 logger.warning(f"🚨 [KAIZEN LOCK] Equity (${equity:,.2f}) hit dynamic floor (${profit_floor:,.2f}). Saving Profits!")
                 bot.send_message(f"🚨 *TRINQUETE DE BENEFICIO*: El Equity ha tocado el piso de protección. Cerrando todo para asegurar ganancias.")
                 
                 # PROTOCOLO V3.7: PURGA ATÓMICA
                 mt5_manager.close_all_positions_atomic()
                 
-                # --- [v6.8.6] DYNAMIC TRUST RATCHET: SUCCESS REWARD ---
-                # Otorgamos el punto de mérito porque la canasta cerró con éxito la meta.
-                persistence_handler.evaluate_performance(daily_pnl, is_basket_win=True)
+                # --- [v6.9.0] POST-LIQUIDATION VERIFICATION (MESA LIMPIA) ---
+                # Recalculamos el PnL con el balance real tras cerrar todo.
+                acc_final = mt5_client.account_info()
+                if acc_final:
+                    final_pnl = acc_final.balance - INITIAL_CAPITAL
+                    is_clean = mt5_client.positions_total() == 0
+                    
+                    if is_clean:
+                        logger.info(f"🏆 [KAIZEN SUCCESS] Mesa Limpia. PnL Final: ${final_pnl:,.2f}")
+                        persistence_handler.state["daily_goal_reached"] = True
+                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=True)
+                    else:
+                        logger.error("⚠️ [CLEAN DESK FAIL] Quedaron posiciones abiertas tras liquidación. Promoción denegada.")
+                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=False)
+                else:
+                    logger.error("❌ [FATAL] No se pudo obtener info de cuenta tras liquidación. Abortando evaluación de méritos.")
+
                 
                 # ASYNCHRONOUS COOLDOWN: 4 Horas
                 GLOBAL_RESUME_TIME = time.time() + 14400 
                 logger.warning(f"⏳ [COOLDOWN] System Halted. Resuming at {datetime.fromtimestamp(GLOBAL_RESUME_TIME).strftime('%H:%M:%S')}")
                 continue
 
+
                 
             # --- PHASE 26: TELEGRAM PULSE (Heartbeat) ---
-            # PRIORITIZED: Move pulse to the very top to give user feedback immediately.
-            if time.time() - last_pulse_time > 1800: # Every 60 seconds
+            if time.time() - last_pulse_time > 120: # Cada 2 minutos
                 last_pulse_time = time.time()
                 try:
                     if MT5_CONNECTED:
-                        positions = mt5_client.positions_get()
+                        # 1. Obtener métricas
+                        total_pnl = equity - balance
+                        drawdown_pct = (acc.equity - daily_start_balance) / daily_start_balance * 100.0 if daily_start_balance > 0 else 0
+                        weekly_peak = persistence_handler.state.get("weekly_equity_peak", equity)
                         
-                        pos_summary = ""
+                        # 2. Calcular Objetivos
+                        BASKET_CFG = {"threshold_pct": 2.0}
+                        try:
+                            with open("config/basket_config.json", "r") as f:
+                                BASKET_CFG.update(json.load(f))
+                        except: pass
+                        target_usd = balance * (1 + BASKET_CFG["threshold_pct"] / 100.0)
+
+                        # 3. Resumen de Distritos (L-H-N)
+                        positions = active_positions # Ya cargadas arriba
                         block_pnl = {"ALFA": 0.0, "EXPL": 0.0, "NEME": 0.0, "WINNER": 0.0, "OTHER": 0.0}
                         if positions:
                             for p in positions:
-                                swap = getattr(p, 'swap', 0.0)
-                                comm = getattr(p, 'commission', 0.0)
-                                profit = p.profit + swap + comm
+                                profit = p.profit + getattr(p, 'swap', 0.0) + getattr(p, 'commission', 0.0)
                                 comment = getattr(p, 'comment', "")
-                                
                                 if "ALFA" in comment: block_pnl["ALFA"] += profit
                                 elif "EXPL" in comment: block_pnl["EXPL"] += profit
                                 elif "NEME" in comment: block_pnl["NEME"] += profit
                                 elif "WINNER" in comment: block_pnl["WINNER"] += profit
                                 else: block_pnl["OTHER"] += profit
-                                
-                                if abs(profit) > 10.0:
-                                    pos_summary += f"\n🔹 {p.symbol} {profit:+.2f}"
-                            
-                            block_text = (
-                                f"\n🧬 *L-H-N BETA DISTRICTS*"
-                                f"\n🟢 ALFA: ${block_pnl['ALFA']:+.2f}"
-                                f"\n🔍 EXPL: ${block_pnl['EXPL']:+.2f}"
-                                f"\n💀 NEME: ${block_pnl['NEME']:+.2f}"
-                                f"\n🏆 WINNER: ${block_pnl['WINNER']:+.2f}"
-                            )
-                            pos_summary = block_text + pos_summary
-                        else:
-                            pos_summary = "\n💤 No Active Trades"
-                            
-                        regime_line = ""
-                        if orchestrator:
-                            regime_line = f"\n🎼 Régimen: {orchestrator.current_regime}"
-                            
+
+                        distritos_text = (
+                            f"🧬 *DISTRICTS PnL*\n"
+                            f"├ ALFA: `{block_pnl['ALFA']:+.2f}`\n"
+                            f"├ EXPL: `{block_pnl['EXPL']:+.2f}`\n"
+                            f"├ NEME: `{block_pnl['NEME']:+.2f}`\n"
+                            f"└ WINN: `{block_pnl['WINNER']:+.2f}`\n"
+                        )
+
+                        # 4. Mensaje Premium
                         msg = (
-                            f"💓 *STATUS PULSE* 💓\n"
-                            f"💰 Bal: ${balance:,.2f}\n"
-                            f"📈 Eq:  ${equity:,.2f}\n"
-                            f"📊 PnL Session: ${daily_pnl:+.2f}\n"
-                            f"{regime_line}"
-                            f"{pos_summary}"
+                            f"🏦 *STATUS PULSE OMEGA+*\n"
+                            f"============================\n"
+                            f"💰 *Balance:* `${balance:,.2f}`\n"
+                            f"📈 *Equity:* `${equity:,.2f}`\n"
+                            f"📊 *PnL Flotante:* `{total_pnl:+.2f}` (`{ (total_pnl/balance*100.0) if balance > 0 else 0:+.2f}%`)\n\n"
+                            
+                            f"{distritos_text}\n"
+                            
+                            f"🛡️ *Drawdown:* `{drawdown_pct:.2f}%` (Max -4.5%)\n"
+                            f"🎯 *Obj. Basket:* `${target_usd:,.2f}`\n"
+                            f"💎 *Pico Semanal:* `${weekly_peak:,.2f}`\n\n"
+                            
+                            f"Status: *OPERANDO* ⚡\n"
+                            f"============================"
                         )
                         
                         if bot.enabled: 
                             bot.send_message(msg)
-                            logger.info("💓 Pulse Sent to Telegram")
+                            logger.info("💓 Premium Pulse Sent to Telegram")
 
                         # --- BASKET THEORY: SHADOW TELEMETRY ---
                         current_fingerprint = {f"{p.symbol}_{p.ticket}" for p in positions} if positions else set()
@@ -2528,7 +2674,7 @@ def main():
             # --- [UNIVERSAL GUARDIAN v4.1: ACTIVE PROTECTIONS - EVERY ITERATION] ---
             # 1. Dynamic Profit Lock (Trinquete Escalonado)
             profit_floor = guardian.get_profit_lock_floor(equity)
-            if profit_floor and equity < profit_floor:
+            if profit_floor and equity < profit_floor and active_pos_count > 0:
                 logger.warning(f"🚨 [KAIZEN LOCK] Equity (${equity:,.2f}) hit dynamic floor (${profit_floor:,.2f}). Saving Profits!")
                 bot.send_message(f"🚨 *TRINQUETE DE BENEFICIO*: El Equity ha tocado el piso de protección escalonado. Cerrando todo para asegurar ganancias.")
                 mt5_manager.close_all_positions()
@@ -2645,11 +2791,9 @@ def main():
                 if drawdown_pct <= -0.045:
                     msg = f"☠️ [FTMO IRON DOME ACTIVATED] Daily Drawdown reached {drawdown_pct*100:.2f}%. EMERGENCY SHUTDOWN."
                     logger.critical(msg)
-                    
-                    # A. Liquidación Atómica de todas las posiciones
                     mt5_manager.close_all_positions_atomic()
                     
-                    # B. Apagar todas las estrategias en el Bridge (Cerrar Válvulas)
+                    # B. Apagar todas las estrategias en el Bridge
                     bridge_path = "dashboard_bridge.json"
                     if os.path.exists(bridge_path):
                         try:
@@ -2658,53 +2802,81 @@ def main():
                             with open(bridge_path, 'w') as f: json.dump(bridge_data, f, indent=4)
                         except Exception as e: logger.error(f"Error disabling bridge: {e}")
                     
-                    # C. Notificación de Emergencia 
                     try:
                         from src.nanobot.utils.telegram_bot import TelegramBot
                         tg = TelegramBot()
                         if tg.enabled: tg.send_message(f"☠️ *FTMO IRON DOME*: Cuenta Blindada. DD: `{drawdown_pct*100:.2f}%`. Bot en HALT.")
                     except: pass
                     
-                    # D. Bloqueo de 24h
                     circuit_breaker_cooldown = time.time() + 86400
                     breaker_active = True
 
-                # --- 🚀 BASKET SNIPER & RECOVERY LOCK (v6.1.0) ---
-                # [v6.2.0] SYNC STATE IN LOOP
+                # --- 🚀 QUANTUM DYNAMIC FLOORS & TRAILING (v7.5.0) ---
                 persistence_handler.validate_and_sync(account_info.balance, account_info.equity)
                 
                 total_floating_pnl = account_info.equity - account_info.balance
+                floating_pct = (total_floating_pnl / account_info.balance) * 100.0 if account_info.balance > 0 else 0
                 
-                # A. Global Basket Take Profit (Escalado Dinámico al 2.0%)
-                BASKET_PERCENT = 2.0
+                # Cargar Configuración de Cestas
+                BASKET_CFG = {"threshold_pct": 2.0, "trailing_activation_pct": 1.2, "trailing_distance_pct": 0.5, "weekly_target_pct": 3.0, "weekly_floor_lock_pct": 1.0}
                 try:
                     with open("config/basket_config.json", "r") as f:
-                        bc = json.load(f)
-                        BASKET_PERCENT = bc.get("threshold_pct", 2.0)
+                        BASKET_CFG.update(json.load(f))
                 except: pass
-                
-                BASKET_TP_USD = account_info.balance * (BASKET_PERCENT / 100.0)
-                
-                if total_floating_pnl >= BASKET_TP_USD:
-                    success_msg = f"🎯 [BASKET SNIPER] Target Reached: {BASKET_PERCENT}% (+${total_floating_pnl:.2f}). Securing Portfolio Gains!"
-                    logger.info(success_msg)
-                    mt5_manager.close_all_positions_atomic()
-                    try:
-                        from src.nanobot.utils.notificador import TelegramBot
-                        tg = TelegramBot()
-                        if tg.enabled: tg.send_message(f"🎯 *BASKET SNIPER*: Objetivo alcanzado (`{BASKET_PERCENT}%`). Ganancia: +`${total_floating_pnl:.2f}`. Todo CERRADO.")
-                    except: pass
 
-                # B. Recovery Lock (Freno de Emergencia en Recuperación)
-                # Si hoy hubo pérdidas cerradas significativas y el flotante actual las cubre todas + un margen, salimos.
+                # A. LÓGICA DE TRAILING BASKET (Arrastre de Ganancias)
+                global CURRENT_BASKET_PEAK
+                if len(active_positions) > 0:
+                    if account_info.equity > CURRENT_BASKET_PEAK:
+                        CURRENT_BASKET_PEAK = account_info.equity
+                    
+                    if floating_pct >= BASKET_CFG["trailing_activation_pct"]:
+                        trailing_floor_pct = (CURRENT_BASKET_PEAK - account_info.balance) / account_info.balance * 100.0 - BASKET_CFG["trailing_distance_pct"]
+                        
+                        if floating_pct < trailing_floor_pct:
+                            logger.info(f"🎯 [TRAILING BASKET] Profit secured at {floating_pct:.2f}% (Peak: {((CURRENT_BASKET_PEAK-account_info.balance)/account_info.balance*100.0):.2f}%).")
+                            mt5_manager.close_all_positions_atomic()
+                            CURRENT_BASKET_PEAK = 0.0
+                            try:
+                                from src.nanobot.utils.notificador import TelegramBot
+                                tg = TelegramBot()
+                                if tg.enabled: tg.send_message(f"🎯 *TRAILING BASKET*: Ganancia asegurada en `{floating_pct:.2f}%`. Cierre por retroceso.")
+                            except: pass
+                else:
+                    CURRENT_BASKET_PEAK = account_info.equity
+
+                # B. LÓGICA DE SUELO SEMANAL (Weekly Glass Floor)
+                weekly_start = persistence_handler.state.get("weekly_start_balance", account_info.balance)
+                weekly_peak = persistence_handler.state.get("weekly_equity_peak", account_info.equity)
+                weekly_gain_pct = (account_info.equity - weekly_start) / weekly_start * 100.0 if weekly_start > 0 else 0
+                weekly_peak_gain_pct = (weekly_peak - weekly_start) / weekly_start * 100.0 if weekly_start > 0 else 0
+
+                if weekly_peak_gain_pct >= BASKET_CFG["weekly_target_pct"]:
+                    if not persistence_handler.state.get("weekly_floor_active", False):
+                        persistence_handler.state["weekly_floor_active"] = True
+                        persistence_handler.save()
+                        logger.info(f"💎 [WEEKLY FLOOR] Objetivo de {BASKET_CFG['weekly_target_pct']}% alcanzado. Suelo activado.")
+
+                if persistence_handler.state.get("weekly_floor_active", False):
+                    if weekly_gain_pct <= BASKET_CFG["weekly_floor_lock_pct"]:
+                        logger.warning(f"🛡️ [WEEKLY FLOOR VIOLATED] Profit drop to {weekly_gain_pct:.2f}%. Securing weekly green!")
+                        mt5_manager.close_all_positions_atomic()
+                        circuit_breaker_cooldown = time.time() + (86400 * 3) 
+                        try:
+                            from src.nanobot.utils.notificador import TelegramBot
+                            tg = TelegramBot()
+                            if tg.enabled: tg.send_message(f"🛡️ *WEEKLY FLOOR*: Ganancia semanal de `{weekly_gain_pct:.2f}%` ASEGURADA. Bot en reposo.")
+                        except: pass
+
+                # C. Recovery Lock
                 if daily_pnl_closed < -200 and account_info.equity > (daily_start_balance + 50):
-                    rec_msg = f"🛡️ [RECOVERY LOCK] Drawdown safely recovered. Equity (${account_info.equity:,.2f}) > Daily Start. Resetting basket."
-                    logger.warning(rec_msg)
+                    logger.warning(f"🛡️ [RECOVERY LOCK] Drawdown recovered. Resetting basket.")
                     mt5_manager.close_all_positions_atomic()
+                    CURRENT_BASKET_PEAK = 0.0
                     try:
                         from src.nanobot.utils.notificador import TelegramBot
                         tg = TelegramBot()
-                        if tg.enabled: tg.send_message(f"🛡️ *RECOVERY LOCK*: Recuperación completada. Saliendo de zona de riesgo. Bolsa liquidada.")
+                        if tg.enabled: tg.send_message(f"🛡️ *RECOVERY LOCK*: Recuperación completada. Bolsa liquidada.")
                     except: pass
 
 
@@ -2764,6 +2936,10 @@ def main():
                 symbol = ASSET_MAP.get(pair)
                 data = get_mt5_data(symbol, bars=200)
                 if data.empty or len(data) < 50: continue
+                
+                # --- [NEME FIX] INYECTAR INDICADORES ---
+                data = calculate_core_indicators(data)
+                
                 if STRATEGY_HUB_ENABLED and STRATEGY_HUB:
                     # Get signal from StrategyHub (returns SignalResult, not list)
                     hub_result = STRATEGY_HUB.get_signal(pair, data, mode=forced_role)
