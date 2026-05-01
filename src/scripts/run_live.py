@@ -252,8 +252,9 @@ def affinity_harvester_daemon(mt5_client, logger):
                     
                     is_scout = "L1_SCOUT" in comment
                     is_heavy = "L1_HEAVY" in comment
+                    is_grid_l1 = "_L1_" in comment
                     
-                    if not (is_scout or is_heavy): continue
+                    if not (is_scout or is_heavy or is_grid_l1): continue
                     
                     pair = deal.symbol
                     if pair not in map_data: map_data[pair] = {}
