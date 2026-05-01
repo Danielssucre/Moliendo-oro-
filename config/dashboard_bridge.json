@@ -1,0 +1,184 @@
+{
+    "EURUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "GBPUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "USDJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "AUDUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "USDCAD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "NZDUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "GBPJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "EURJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "EURGBP": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "AUDJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "CHFJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "CADJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "EURAUD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "GBPAUD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "EURNZD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "NZDJPY": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "XAUUSD": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "XAGUSD": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "WTI": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "NAS100": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "SPX500": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "DAX40": {
+        "status": "OFF",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "US30": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "BTCUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "ETHUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    },
+    "SOLUSD": {
+        "status": "ON",
+        "strategy_mode": "AUTO",
+        "manual_nem_role": null,
+        "max_levels_override": 7,
+        "emergency_stop": false
+    }
+}

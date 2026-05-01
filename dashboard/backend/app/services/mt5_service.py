@@ -65,108 +65,131 @@ class MT5Service:
                 logger.error(f"Error loading credentials: {e}")
         return None
 
-    def _launch_bridge(self):
-        """Launches the hijacked MetaEditor bridge via Wine."""
-        # Simple check: is port already being listened on or bridge process exists?
+    def _launch_mt5_app(self):
+        """Opens MetaTrader 5 via macOS native 'open' command."""
         try:
-            # Check if anyone is LISTENING on the port
-            output = subprocess.check_output(["lsof", "-i", f":{self.port}"]).decode()
-            if "LISTEN" in output:
-                logger.info("📡 Bridge already listening. Skipping launch.")
+            running = subprocess.check_output(["pgrep", "-f", "MetaTrader 5"], stderr=subprocess.DEVNULL).decode().strip()
+            if running:
+                logger.info("📡 MetaTrader 5 already running.")
                 return
-        except subprocess.CalledProcessError:
-            pass # Port is clear
+        except:
+            pass
+        logger.info("🖥️ Launching MetaTrader 5 app via macOS...")
+        try:
+            subprocess.Popen(["open", "-a", "MetaTrader 5"])
+            time.sleep(10)  # Give MT5 time to fully load
+        except Exception as e:
+            logger.error(f"Failed to open MetaTrader 5: {e}")
+
+    def _launch_bridge(self):
+        """Launches the RPyC bridge server (python.exe rpyc_start.py) via Wine inside the MT5 Wine prefix."""
+        # Check if port is already active
+        try:
+            output = subprocess.check_output(["lsof", "-i", f":{self.port}"], stderr=subprocess.DEVNULL).decode()
+            if "LISTEN" in output:
+                logger.info(f"📡 RPyC Bridge already listening on port {self.port}. Skipping launch.")
+                return
+        except:
+            pass  # Port is free — proceed to launch
 
         wine_bin = "/Applications/MetaTrader 5.app/Contents/SharedSupport/wine/bin/wine64"
         wine_prefix = os.path.expanduser("~/Library/Application Support/net.metaquotes.wine.metatrader5")
-        exe_path = "C:\\Program Files\\MetaTrader 5\\metaeditor64.exe"
-        
+        mt5_dir = os.path.join(wine_prefix, "drive_c/Program Files/MetaTrader 5")
+        python_exe = "C:\\Program Files\\MetaTrader 5\\python.exe"
+        rpyc_script = "C:\\Program Files\\MetaTrader 5\\rpyc_start.py"
+
         if not os.path.exists(wine_bin):
-            logger.error("Wine binary not found in MT5 app bundle")
+            logger.warning("Wine binary not found. Using macOS open fallback.")
+            self._launch_mt5_app()
             return
-            
+
         env = os.environ.copy()
         env["WINEPREFIX"] = wine_prefix
-        
-        logger.info("🚀 Launching MT5 IDE Bridge (MetaEditor Hijack)...")
+        env["WINEDEBUG"] = "-all"  # Suppress Wine debug noise
+
+        logger.info("🚀 Launching RPyC Bridge (python.exe rpyc_start.py via Wine)...")
         try:
-            # We use nohup/subprocess to detach it
             subprocess.Popen(
-                [wine_bin, exe_path],
+                [wine_bin, python_exe, rpyc_script],
                 env=env,
+                cwd=mt5_dir,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True
             )
+            # Wait actively for port to open (up to 20s)
+            for i in range(20):
+                time.sleep(1)
+                try:
+                    out = subprocess.check_output(["lsof", "-i", f":{self.port}"], stderr=subprocess.DEVNULL).decode()
+                    if "LISTEN" in out:
+                        logger.info(f"✅ RPyC Bridge is now listening on port {self.port} (after {i+1}s).")
+                        return
+                except:
+                    pass
+            logger.warning(f"⚠️ Bridge did not start listening within 20s on port {self.port}.")
         except Exception as e:
-            logger.error(f"Failed to launch bridge: {e}")
+            logger.error(f"Failed to launch RPyC bridge: {e}")
 
     def connect(self, force: bool = False):
-        """Connects to MT5, ensuring the correct account is active."""
+        """Connects to MT5, reusing the active Wine session if possible."""
         creds = self._load_creds()
-        if not creds:
-            return False
+        target_login = int(creds.get("account", 0)) if creds else 0
+        target_server = creds.get("server", "") if creds else ""
+        password = creds.get("password", "") if creds else ""
 
-        target_login = int(creds.get("account", 0))
-        target_server = creds.get("server", "")
-        password = creds.get("password", "")
-
+        # Reuse existing healthy client
         if self.client and not force:
             try:
-                # Check health AND if it's the right account
                 info = self.client.account_info()
-                if info and info.login == target_login:
-                    logger.info(f"♻️ Reusing existing session for {target_login}")
+                if info:
+                    logger.info(f"♻️ Reusing active MT5 session: #{info.login} | Balance: {info.balance}")
                     return True
-                else:
-                    logger.info(f"🔄 Account mismatch (Current: {info.login if info else 'None'}, Target: {target_login}). Reconnecting...")
-                    self.client.shutdown()
-                    self.client = None
             except:
                 self.client = None
 
         try:
             if not self.client:
                 self.client = MetaTrader5(port=self.port)
-            
-            logger.info(f"🔑 MT5 Attempting Connect: Account={target_login}, Server={target_server}")
-            path = "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
-            
-            # Initialization parameters
-            init_params = {
-                "login": target_login,
-                "server": target_server
-            }
-            if password:
-                init_params["password"] = password
 
-            # Strategy 1: Attempt initialization with parameters
-            # If no password provided, it relies on saved credentials in the terminal
-            if self.client.initialize(path=path, portable=True, **init_params):
-                logger.info(f"✅ MT5 Initialized: {target_login} on {target_server}")
-                return True
-            
-            # Strategy 2: Fallback - Initialize WITHOUT path (reusing running terminal)
-            logger.warning(f"MT5 initialize with path failed: {self.client.last_error()}. Trying fallback...")
-            if self.client.initialize(**init_params):
-                logger.info(f"✅ MT5 Initialized via Fallback: {target_login}")
-                return True
-                
-            # Strategy 3: Launch bridge and try again
-            logger.warning(f"MT5 fallback failed. Launching bridge...")
+            # STRATEGY 1: Bare initialize — reuse whatever is already logged in the terminal
+            logger.info("🔑 MT5 Strategy 1: Bare initialize (reuse active session)...")
+            if self.client.initialize():
+                info = self.client.account_info()
+                if info:
+                    logger.info(f"✅ MT5 Connected (bare): #{info.login} on {info.server} | Balance: {info.balance}")
+                    return True
+
+            # STRATEGY 2: Initialize with login/server only (no password — terminal has saved creds)
+            if target_login:
+                logger.warning(f"Strategy 1 failed: {self.client.last_error()}. Trying with account params...")
+                init_params = {"login": target_login, "server": target_server}
+                if password:
+                    init_params["password"] = password
+
+                if self.client.initialize(**init_params):
+                    logger.info(f"✅ MT5 Connected (with params): #{target_login}")
+                    return True
+
+            # STRATEGY 3: Launch RPyC bridge and retry bare
+            logger.warning(f"Strategy 2 failed: {self.client.last_error()}. Launching bridge...")
             self._launch_bridge()
-            time.sleep(8)
-            
-            if self.client.initialize(**init_params):
-                logger.info(f"✅ MT5 Initialized after bridge launch: {target_login}")
-                return True
+
+            if self.client.initialize():
+                info = self.client.account_info()
+                if info:
+                    logger.info(f"✅ MT5 Connected after bridge launch: #{info.login}")
+                    return True
+
         except Exception as e:
             logger.error(f"MT5 Connection error: {e}")
             self.client = None
-        
+
+        logger.error("❌ MT5: All connection strategies failed.")
         return False
 
     def get_account_stats(self):
+
         if not self.connect():
             return None
         

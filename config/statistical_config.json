@@ -1,0 +1,7 @@
+{
+    "alpha": 0.05,
+    "min_trades_for_decision": 8,
+    "confidence_level": 0.95,
+    "wilson_ci_confidence": 0.95,
+    "last_updated": "2026-04-21T16:52:00"
+}

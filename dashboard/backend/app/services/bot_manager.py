@@ -50,11 +50,26 @@ class BotManager:
             return {"status": "error", "message": "Bot is not running"}
         
         try:
-            # Kill process group
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            return {"status": "success", "message": "Bot stopped"}
+            # [ROBUST KILL v4.9.5] Usar psutil para matar el proceso y sus descendientes
+            logger_manager = logging.getLogger("BOT_MANAGER")
+            logger_manager.info(f"🛑 Intentando detener bot PID {proc.pid}")
+            
+            # Matar a los hijos primero (como caffeinate o subprocesos de trading)
+            for child in proc.children(recursive=True):
+                try:
+                    child.terminate()
+                except: pass
+            
+            proc.terminate()
+            # Esperar hasta 3 segundos a que termine de forma limpia
+            try:
+                proc.wait(timeout=3)
+            except psutil.TimeoutExpired:
+                proc.kill() # Forzar si no responde
+            
+            return {"status": "success", "message": "Bot stopped successfully"}
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {"status": "error", "message": f"Critical Kill Error: {str(e)}"}
 
     def get_status(self):
         proc = self.get_running_bot()

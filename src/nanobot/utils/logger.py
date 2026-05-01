@@ -64,16 +64,16 @@ class TradingLogger:
                 pass
 
     def log_operation(self, operation_type: str, data: Dict[str, Any]):
-        """Log a trading operation to JSONL file (append only)."""
+        """Log a trading operation to JSONL file (append only) with thread safety."""
         try:
+            from nanobot.utils.database import SecureDatabaseManager as db
             operation = {
                 "timestamp": datetime.now().isoformat(),
                 "type": operation_type,
                 "data": data
             }
-            # Append as a single line (JSONL format)
-            with open(self.operations_file, 'a') as f:
-                f.write(json.dumps(operation) + "\n")
+            line = json.dumps(operation)
+            db.append_log(self.operations_file, line)
         
         except Exception as e:
             self.logger.error(f"Failed to log operation: {e}")

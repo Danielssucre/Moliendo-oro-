@@ -13,7 +13,7 @@ import json
 import threading
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 # --- [v6.2.2] MASTER PATH RESOLUTION ---
 # Ensure the trading_agent and its src folder are always in the path
@@ -52,6 +52,128 @@ def run_iron_funnel_arbitration(pair, data, signal_pool):
             s.force_scout = True
             logger.info(f"⚖️ [IRON FUNNEL] Signal {s.strategy_tag} on {pair} forced to SCOUT mode (0.01 lot).")
     return signal_pool
+
+# --- [V8.5.0] SURVIVAL PROTOCOLS (ROLLOVER KILL-SWITCH) ---
+def get_rollover_kill_pnl(mt5_client):
+    """Calcula el PnL total de los trades cerrados por el Killswitch hoy."""
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        # Scan today's deals (since 00:00 UTC)
+        start_date = datetime(now.year, now.month, now.day)
+        deals = mt5_client.history_deals_get(start_date, now + timedelta(hours=1))
+        if not deals: return 0.0
+        
+        total_kill_pnl = 0.0
+        for d in deals:
+            if d.entry == 1: # OUT
+                if "[ROLLOVER_KILL]" in getattr(d, 'comment', ''):
+                    total_kill_pnl += (d.profit + d.swap + d.commission)
+        return total_kill_pnl
+    except Exception as e:
+        logger.error(f"❌ Error calculando Rollover PnL: {e}")
+        return 0.0
+
+def check_rollover_killswitch(mt5_client, persistence_handler):
+    """
+    [V8.5.0] ROLLOVER KILL-SWITCH & BUNKER
+    Controla la liquidación de emergencia a las 23:55 y el bloqueo de hibernación.
+    """
+    try:
+        # 1. Obtener hora del servidor (Reloj de FTMO)
+        tick = mt5_client.symbol_info_tick("EURUSD")
+        if tick:
+            server_time = datetime.fromtimestamp(tick.time)
+        else:
+            # Fallback a UTC+2 (Standard FTMO/EET)
+            server_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=2)
+            
+        hour = server_time.hour
+        minute = server_time.minute
+        
+        state = persistence_handler.state
+        lock_active = state.get("rollover_lock", False)
+        
+        # --- [GATILLO 1: LA LIQUIDACIÓN (23:55)] ---
+        if hour == 23 and minute >= 55:
+            if not lock_active:
+                logger.warning(f"⚠️ [ROLLOVER KILL-SWITCH] Hora servidor: {server_time.strftime('%H:%M:%S')}. Iniciando Búnker.")
+                positions = mt5_client.positions_get()
+                if positions:
+                    for pos in positions:
+                        # Solo cerrar si NO está en Breakeven positivo (PnL < 0)
+                        if pos.profit + pos.swap + pos.commission < 0:
+                            logger.info(f"💀 [KILL] Liquidando {pos.symbol} #{pos.ticket}")
+                            mt5_client.eval(f"mt5.Close('{pos.symbol}', ticket={pos.ticket}, comment='[ROLLOVER_KILL]')")
+                
+                state["rollover_lock"] = True
+                persistence_handler.save()
+                logger.info("🔒 [BÚNKER ACTIVADO] Hibernación total hasta las 02:00 AM.")
+            return True
+            
+        # --- [GATILLO 2: EL AMANECER (02:00)] ---
+        if hour >= 2 and hour < 23:
+            if lock_active:
+                state["rollover_lock"] = False
+                persistence_handler.save()
+                logger.info("☀️ [BÚNKER DESACTIVADO] Mercado en horario líquido. Radares activos.")
+            return False
+            
+        return lock_active
+        
+    except Exception as e:
+        logger.error(f"❌ Error en Rollover Kill-Switch: {e}")
+        return persistence_handler.state.get("rollover_lock", False)
+
+def harvest_reversal_data(positions, mt5_client, persistence_handler):
+    """
+    [Fase 4: Shadow Harvester]
+    Analiza la canasta activa antes del cierre para identificar la 'Zona de Reversión' (Pivot).
+    Calcula la distancia en ATR desde L1 hasta el nivel más profundo alcanzado.
+    """
+    try:
+        if not positions: return
+        
+        # Agrupar por símbolo
+        by_symbol = {}
+        for p in positions:
+            if p.symbol not in by_symbol: by_symbol[p.symbol] = []
+            by_symbol[p.symbol].append(p)
+            
+        for symbol, pos_list in by_symbol.items():
+            # Solo procesar si hay al menos una orden de MegaGrid
+            grid_positions = [p for p in pos_list if "_L" in getattr(p, 'comment', '')]
+            if not grid_positions: continue
+            
+            l1_pos = None
+            pivot_pos = None
+            max_level = 0
+            
+            for p in grid_positions:
+                comment = getattr(p, 'comment', '')
+                try:
+                    # Formato esperado: ..._L1_...
+                    if "_L" in comment:
+                        parts = comment.split("_L")
+                        if len(parts) > 1 and parts[1][0].isdigit():
+                            level = int(parts[1][0])
+                            if level == 1: l1_pos = p
+                            if level > max_level:
+                                max_level = level
+                                pivot_pos = p
+                except: continue
+            
+            if l1_pos and pivot_pos and vol_engine:
+                atr = vol_engine.get_symbol_atr(symbol)
+                if atr and atr > 0:
+                    dist_price = abs(pivot_pos.price_open - l1_pos.price_open)
+                    dist_atr = dist_price / atr
+                    
+                    if dist_atr >= 0:
+                        logger.info(f"📊 [SHADOW HARVEST] {symbol} Reversión en L{max_level} (Distancia: {dist_atr:.2f} ATR)")
+                        persistence_handler.update_reversal_profile(symbol, dist_atr)
+                        
+    except Exception as e:
+        logger.error(f"❌ Error en Shadow Harvester: {e}")
 
 class MegaGridTracker:
     def __init__(self, mt5_client, logger):
@@ -106,10 +228,15 @@ class MegaGridTracker:
         entry_price = tick.ask if final_side == 1 else tick.bid
         
         is_scout_mode = getattr(signal, 'force_scout', False)
+        
+        # [Fase 4] Inyección de Inteligencia de Reversión (Gravity Well)
+        reversal_data = persistence_handler.state.get("reversal_profile", {})
+        
         levels = strategy.generate_pool(
             symbol=symbol_mt5, entry_price=entry_price, atr=atr_val,
             direction=final_side, total_risk=RISK_PER_TRADE, 
-            is_scout=is_scout_mode, nem_type=nem_type
+            is_scout=is_scout_mode, nem_type=nem_type,
+            reversal_profile=reversal_data
         )
 
         # 4. [SCOUT FIRST] DESPACHO DEL ESPÍA CON BALÍSTICA HEREDADA (L1 DNA)
@@ -944,6 +1071,12 @@ def check_basket_profit_lock(mt5_client, mt5_manager, bot):
                 
             if force_close:
                 logger.warning(f"🎯 [BASKET LOCK] {close_reason}. Securing gains for the day.")
+                
+                # --- [Fase 4: SHADOW HARVEST] ---
+                # Capturamos la anatomía de la canasta antes de liquidarla
+                positions_for_harvest = mt5_client.positions_get()
+                if positions_for_harvest:
+                    harvest_reversal_data(positions_for_harvest, mt5_client, persistence_handler)
                 
                 # EXECUTE: Close all trades
                 mt5_manager.close_all_positions_atomic()
@@ -2466,6 +2599,11 @@ def main():
 
     while True:
         try:
+            # --- [V8.5.0] ROLLOVER & BUNKER PROTECTION ---
+            if check_rollover_killswitch(mt5_client, persistence_handler):
+                time.sleep(10)
+                continue
+
             # Globals for components
             global market_guardian, orchestrator, meta_selector, guardian, GLOBAL_RESUME_TIME, STRATEGY_HUB_ENABLED, STRATEGY_HUB
             logger.debug("--- [STEP 0] Loop Start ---")
@@ -2528,13 +2666,19 @@ def main():
             INITIAL_CAPITAL = daily_start
             current_capital = balance # Live monitoring
             
-            daily_pnl = equity - INITIAL_CAPITAL
+            real_pnl = equity - INITIAL_CAPITAL
+            kill_pnl = get_rollover_kill_pnl(mt5_client)
+            
+            # Adjusted PnL ignores ROLLOVER_KILL losses for the Ratchet limit
+            adjusted_pnl = real_pnl
+            if kill_pnl < 0:
+                adjusted_pnl = real_pnl - kill_pnl
             
             # --- [v6.7.0] DYNAMIC TRUST RATCHET: DAILY LOSS PROTECTION ---
-            # Si el drawdown diario supera el -0.5%, castigamos el nivel de confianza.
-            if daily_pnl < -(INITIAL_CAPITAL * 0.005):
+            # Si el drawdown diario ajustado supera el -0.5%, castigamos el nivel de confianza.
+            if adjusted_pnl < -(INITIAL_CAPITAL * 0.005):
                 # Solo evaluamos si hay un cambio real para evitar spam
-                persistence_handler.evaluate_performance(daily_pnl)
+                persistence_handler.evaluate_performance(adjusted_pnl)
             
             is_small_cap = balance < 100
             

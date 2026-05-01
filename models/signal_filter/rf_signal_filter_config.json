@@ -1,0 +1,63 @@
+{
+  "version": "1.0",
+  "trained_at": "2026-04-14T19:02:38.455569",
+  "model_type": "RandomForestClassifier",
+  "features": [
+    "hour",
+    "m5_adx",
+    "m5_rsi",
+    "m5_dist_200",
+    "h1_adx",
+    "h1_rsi",
+    "h1_dist_200",
+    "h1_trend",
+    "vol_ratio",
+    "regime_encoded"
+  ],
+  "target": "is_good_setup (max_mfe_r >= 1.5)",
+  "train_samples": 46740,
+  "test_accuracy": 0.5400941377834831,
+  "feature_importance": [
+    {
+      "feature": "m5_rsi",
+      "importance": 0.1386957785750865
+    },
+    {
+      "feature": "m5_dist_200",
+      "importance": 0.13296425958029015
+    },
+    {
+      "feature": "m5_adx",
+      "importance": 0.12995459562527176
+    },
+    {
+      "feature": "h1_dist_200",
+      "importance": 0.12912004244671646
+    },
+    {
+      "feature": "vol_ratio",
+      "importance": 0.12700783208012267
+    },
+    {
+      "feature": "h1_rsi",
+      "importance": 0.12442373183038082
+    },
+    {
+      "feature": "h1_adx",
+      "importance": 0.12186377438515943
+    },
+    {
+      "feature": "hour",
+      "importance": 0.07994644618907634
+    },
+    {
+      "feature": "regime_encoded",
+      "importance": 0.011034583099694155
+    },
+    {
+      "feature": "h1_trend",
+      "importance": 0.004988956188201652
+    }
+  ],
+  "threshold_recommendation": 0.5
+}

@@ -33,7 +33,7 @@
                 "min_risk_reward_ratio": 2.0
             },
             "probability": {
-                "min_monte_carlo_prob": 0.40
+                "min_monte_carlo_prob": 0.4
             },
             "indicators": {
                 "adx_threshold": 25,
@@ -100,7 +100,7 @@
                 "risk_per_trade": 0.15
             },
             "probability": {
-                "min_monte_carlo_prob": 0.40
+                "min_monte_carlo_prob": 0.4
             },
             "indicators": {
                 "adx_threshold": 25,
@@ -169,7 +169,7 @@
                 "risk_per_trade": 0.5
             },
             "probability": {
-                "min_monte_carlo_prob": 0.40,
+                "min_monte_carlo_prob": 0.4,
                 "min_threshold": 0.55
             },
             "indicators": {
@@ -194,8 +194,8 @@
                 "atr_multiplier_stop_loss": 1.5
             },
             "probability": {
-                "min_monte_carlo_prob": 0.30,
-                "min_threshold": 0.60
+                "min_monte_carlo_prob": 0.3,
+                "min_threshold": 0.6
             },
             "indicators": {
                 "adx_threshold": 20,
@@ -249,7 +249,7 @@
     "risk_management": {
         "max_risk_per_trade_percent": 0.5,
         "default_capital": 10000,
-        "risk_per_trade": 0.15,
+        "risk_per_trade": 0.01,
         "min_risk_reward_ratio": 2.0,
         "atr_multiplier_stop_loss": 1.5,
         "tp_levels": 3
@@ -332,5 +332,5 @@
             "dead": 120
         }
     },
-    "mega_grid_enabled": false
+    "mega_grid_enabled": true
 }

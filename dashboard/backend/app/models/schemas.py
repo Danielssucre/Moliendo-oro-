@@ -14,7 +14,8 @@ class BotConfig(BaseModel):
 
 class BasketLockConfig(BaseModel):
     enabled: bool = True
-    threshold: float = 5.0
+    threshold: float = 500.0  # Legacy USD value
+    threshold_pct: float = 2.0 # 🔥 NEW: Institutional Dynamic Choice
     last_trigger: Optional[str] = None
 
 class BotStatus(BaseModel):

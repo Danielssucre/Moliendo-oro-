@@ -1,0 +1,16 @@
+{
+    "date": "2026-04-24",
+    "status": "PROCESSED",
+    "last_update": "2026-04-24T22:28:39.060342",
+    "start_equity": 50381.67,
+    "end_equity": 50202.35,
+    "max_equity": 50758.04,
+    "min_equity": 50179.48,
+    "net_change": -179.32,
+    "net_change_pct": -0.3559,
+    "max_drawdown_abs": 202.19,
+    "max_drawdown_pct": 0.4013,
+    "max_runup_abs": 376.37,
+    "max_runup_pct": 0.747,
+    "data_points": 1103
+}

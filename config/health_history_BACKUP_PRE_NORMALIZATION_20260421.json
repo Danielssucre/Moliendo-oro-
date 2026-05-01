@@ -1,0 +1,1510 @@
+{
+    "neme1_trades": [
+        {
+            "profit": 10000.0,
+            "is_win": true,
+            "symbol": "",
+            "timestamp": "2026-04-19T19:42:23",
+            "ticket": 411469566,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.86,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T20:28:19",
+            "ticket": 411500055,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -6.34,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501468,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.23,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501469,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.23,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501470,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.11,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501471,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.11,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501472,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.23,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T20:31:01",
+            "ticket": 411501473,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.33,
+            "is_win": false,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:09",
+            "ticket": 411544930,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.93,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:10",
+            "ticket": 411544941,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.62,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:10",
+            "ticket": 411544945,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.62,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:10",
+            "ticket": 411544951,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.62,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:11",
+            "ticket": 411544956,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.62,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:11",
+            "ticket": 411544963,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.31,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:11",
+            "ticket": 411544966,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.31,
+            "is_win": true,
+            "symbol": "EURGBP",
+            "timestamp": "2026-04-19T21:51:11",
+            "ticket": 411544969,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.18,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:12",
+            "ticket": 411544972,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.13,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:12",
+            "ticket": 411544976,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.56,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:12",
+            "ticket": 411544979,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.55,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:13",
+            "ticket": 411544984,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.55,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:13",
+            "ticket": 411544986,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.55,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:13",
+            "ticket": 411544987,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.57,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-19T21:51:14",
+            "ticket": 411544990,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.03,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:15",
+            "ticket": 411545003,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.03,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:15",
+            "ticket": 411545005,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.03,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:15",
+            "ticket": 411545012,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.03,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:16",
+            "ticket": 411545017,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.05,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:16",
+            "ticket": 411545021,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.04,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:16",
+            "ticket": 411545027,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.04,
+            "is_win": true,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-19T21:51:16",
+            "ticket": 411545031,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.36,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:17",
+            "ticket": 411545033,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.36,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:17",
+            "ticket": 411545036,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.36,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:17",
+            "ticket": 411545049,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.35,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:18",
+            "ticket": 411545053,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.35,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:18",
+            "ticket": 411545057,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.35,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:18",
+            "ticket": 411545060,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.34,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:18",
+            "ticket": 411545065,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.26,
+            "is_win": false,
+            "symbol": "GBPUSD",
+            "timestamp": "2026-04-19T21:51:19",
+            "ticket": 411545073,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.6800000000000002,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:19",
+            "ticket": 411545079,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.84,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:19",
+            "ticket": 411545093,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.84,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:20",
+            "ticket": 411545096,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.8,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:20",
+            "ticket": 411545115,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.91,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:20",
+            "ticket": 411545135,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.91,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:21",
+            "ticket": 411545159,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.92,
+            "is_win": true,
+            "symbol": "AUDUSD",
+            "timestamp": "2026-04-19T21:51:21",
+            "ticket": 411545188,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.04,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:21",
+            "ticket": 411545191,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.02,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:21",
+            "ticket": 411545194,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.51,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:22",
+            "ticket": 411545202,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.51,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:22",
+            "ticket": 411545204,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.51,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:22",
+            "ticket": 411545206,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.51,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:23",
+            "ticket": 411545208,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.51,
+            "is_win": true,
+            "symbol": "NZDUSD",
+            "timestamp": "2026-04-19T21:51:23",
+            "ticket": 411545211,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.6400000000000001,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-19T21:51:23",
+            "ticket": 411545216,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.33,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:24",
+            "ticket": 411545227,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.67,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:24",
+            "ticket": 411545231,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.67,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:24",
+            "ticket": 411545238,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.66,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:25",
+            "ticket": 411545249,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.67,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:25",
+            "ticket": 411545253,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -0.62,
+            "is_win": false,
+            "symbol": "AUDJPY",
+            "timestamp": "2026-04-19T21:51:25",
+            "ticket": 411545258,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.08,
+            "is_win": true,
+            "symbol": "GBPJPY",
+            "timestamp": "2026-04-19T21:51:26",
+            "ticket": 411545261,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.4,
+            "is_win": false,
+            "symbol": "EURAUD",
+            "timestamp": "2026-04-19T21:51:26",
+            "ticket": 411545266,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.41,
+            "is_win": false,
+            "symbol": "EURAUD",
+            "timestamp": "2026-04-19T21:51:26",
+            "ticket": 411545269,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.4,
+            "is_win": false,
+            "symbol": "EURAUD",
+            "timestamp": "2026-04-19T21:51:27",
+            "ticket": 411545272,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.33,
+            "is_win": false,
+            "symbol": "GBPAUD",
+            "timestamp": "2026-04-19T21:51:27",
+            "ticket": 411545274,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.32,
+            "is_win": false,
+            "symbol": "GBPAUD",
+            "timestamp": "2026-04-19T21:51:27",
+            "ticket": 411545280,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.32,
+            "is_win": false,
+            "symbol": "GBPAUD",
+            "timestamp": "2026-04-19T21:51:27",
+            "ticket": 411545285,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 20.87,
+            "is_win": true,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T21:51:28",
+            "ticket": 411545291,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.79,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:07",
+            "ticket": 411599022,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.56,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:07",
+            "ticket": 411599023,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.37,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:12",
+            "ticket": 411599056,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.29,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:12",
+            "ticket": 411599059,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.29,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:12",
+            "ticket": 411599060,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -54.37,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-19T23:28:12",
+            "ticket": 411599061,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726900,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726903,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726904,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.96,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726905,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.96,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726906,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.96,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726907,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T04:23:27",
+            "ticket": 411726908,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 2.49,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T05:32:30",
+            "ticket": 411784925,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:45:55",
+            "ticket": 411892028,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.49,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:46:19",
+            "ticket": 411892362,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.07,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:46:19",
+            "ticket": 411892363,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.5300000000000002,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:46:19",
+            "ticket": 411892364,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.49,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:46:19",
+            "ticket": 411892365,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.07,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T07:46:19",
+            "ticket": 411892366,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 2.49,
+            "is_win": true,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T08:08:17",
+            "ticket": 411909220,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.76,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:37:59",
+            "ticket": 411928533,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.76,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:37:59",
+            "ticket": 411928534,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.5600000000000005,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:38:11",
+            "ticket": 411928592,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.7800000000000002,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:38:11",
+            "ticket": 411928593,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.7800000000000002,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:38:11",
+            "ticket": 411928594,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.55,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T08:38:11",
+            "ticket": 411928595,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 2.79,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T09:04:30",
+            "ticket": 411943500,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.52,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T11:17:16",
+            "ticket": 412080279,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.62,
+            "is_win": true,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T11:36:50",
+            "ticket": 412113572,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.14,
+            "is_win": false,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T12:55:08",
+            "ticket": 412247705,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.27,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T12:55:24",
+            "ticket": 412248065,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.62,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T12:59:06",
+            "ticket": 412255071,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.99,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T12:59:37",
+            "ticket": 412255767,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 5.87,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T16:12:56",
+            "ticket": 412427799,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 3.37,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T16:54:29",
+            "ticket": 412449534,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.05,
+            "is_win": true,
+            "symbol": "CHFJPY",
+            "timestamp": "2026-04-20T18:39:27",
+            "ticket": 412491963,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.71,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494885,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.75,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494891,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.71,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494898,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.71,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494901,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.74,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494905,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -9.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494913,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -9.48,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412494914,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.87,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495110,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.87,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495111,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.87,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495112,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.75,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495113,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.87,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495114,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.75,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495116,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.87,
+            "is_win": false,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T19:05:01",
+            "ticket": 412495117,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495628,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.65,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495641,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495654,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.55,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495666,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495667,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:06:18",
+            "ticket": 412495668,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.76,
+            "is_win": false,
+            "symbol": "CADCHF",
+            "timestamp": "2026-04-20T19:56:48",
+            "ticket": 412499141,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -44.62,
+            "is_win": false,
+            "symbol": "XAUUSD",
+            "timestamp": "2026-04-20T20:06:57",
+            "ticket": 412505003,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.37,
+            "is_win": false,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T20:45:12",
+            "ticket": 412516651,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 6.6899999999999995,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T20:45:23",
+            "ticket": 412516732,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.8,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T20:46:36",
+            "ticket": 412517143,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.94,
+            "is_win": false,
+            "symbol": "EURNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517545,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 5.45,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517553,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 6.26,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T20:56:57",
+            "ticket": 412520087,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.74,
+            "is_win": false,
+            "symbol": "EURUSD",
+            "timestamp": "2026-04-20T21:00:23",
+            "ticket": 412521830,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 3.49,
+            "is_win": true,
+            "symbol": "NZDJPY",
+            "timestamp": "2026-04-20T21:04:15",
+            "ticket": 412522999,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 2.82,
+            "is_win": true,
+            "symbol": "GBPCAD",
+            "timestamp": "2026-04-20T22:12:21",
+            "ticket": 412544420,
+            "source": "BACKFILL_SCAN"
+        }
+    ],
+    "neme2_trades": [
+        {
+            "profit": -3.01,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517574,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -1.51,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517573,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -4.52,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517572,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -6.03,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517571,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -4.52,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517569,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -2.97,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517567,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -2.79,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472056,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -1.47,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472055,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -5.46,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472026,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -4.09,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472025,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -4.09,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472024,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -2.73,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472023,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -4.09,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472022,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -1.38,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411472016,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -3.54,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411469943,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -5.31,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T17:02:37",
+            "ticket": 411469942,
+            "source": "MIGRATION_BACKFILL"
+        },
+        {
+            "profit": -1.8399999999999999,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:37",
+            "ticket": 411469923,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.31,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:46",
+            "ticket": 411469937,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.54,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:46",
+            "ticket": 411469938,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.54,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:46",
+            "ticket": 411469939,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -5.31,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:46",
+            "ticket": 411469940,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -7.08,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-19T19:46:46",
+            "ticket": 411469941,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -9.0,
+            "is_win": false,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-19T20:01:10",
+            "ticket": 411474141,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 9.92,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-19T20:21:21",
+            "ticket": 411496452,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 8.41,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-19T21:51:14",
+            "ticket": 411544993,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 8.41,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-19T21:51:14",
+            "ticket": 411544994,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 8.41,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-19T21:51:14",
+            "ticket": 411544998,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 0.81,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-19T21:51:24",
+            "ticket": 411545220,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -9.79,
+            "is_win": false,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:20:11",
+            "ticket": 411768638,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 9.77,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:20:11",
+            "ticket": 411768640,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 10.73,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:20:51",
+            "ticket": 411769258,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 11.78,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:21:16",
+            "ticket": 411770178,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.7,
+            "is_win": false,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:21:22",
+            "ticket": 411770459,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 3.7199999999999998,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:21:27",
+            "ticket": 411770693,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.68,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770757,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -4.68,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770760,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -6.24,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770761,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -1.55,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770762,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770763,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770764,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -3.1,
+            "is_win": false,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T05:21:28",
+            "ticket": 411770765,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 13.74,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:21:30",
+            "ticket": 411770818,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.07,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:21:38",
+            "ticket": 411771296,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 4.46,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:22:50",
+            "ticket": 411772402,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 5.24,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:23:38",
+            "ticket": 411773545,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 15.75,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T05:23:42",
+            "ticket": 411773681,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 5.93,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T05:24:26",
+            "ticket": 411774243,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 1.56,
+            "is_win": true,
+            "symbol": "SOLUSD",
+            "timestamp": "2026-04-20T12:23:08",
+            "ticket": 412187124,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 18.56,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T15:18:44",
+            "ticket": 412386285,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 21.74,
+            "is_win": true,
+            "symbol": "BTCUSD",
+            "timestamp": "2026-04-20T16:02:57",
+            "ticket": 412419224,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": 7.17,
+            "is_win": true,
+            "symbol": "ETHUSD",
+            "timestamp": "2026-04-20T16:41:00",
+            "ticket": 412443426,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.9,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T19:05:00",
+            "ticket": 412495036,
+            "source": "BACKFILL_SCAN"
+        },
+        {
+            "profit": -2.9699999999999998,
+            "is_win": false,
+            "symbol": "AUDNZD",
+            "timestamp": "2026-04-20T20:49:17",
+            "ticket": 412517566,
+            "source": "BACKFILL_SCAN"
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "daily_start_balance": 199420.55,
+    "equity_peak": 201942.39,
+    "last_reset_date": "2026-05-01",
+    "trust_tier": 1,
+    "consecutive_baskets": 0,
+    "version": "1.3.0",
+    "last_reset_week": 18,
+    "weekly_start_balance": 199954.72,
+    "weekly_equity_peak": 201942.39,
+    "weekly_floor_active": false,
+    "daily_goal_reached": false,
+    "rollover_lock": false,
+    "reversal_profile": {}
+}

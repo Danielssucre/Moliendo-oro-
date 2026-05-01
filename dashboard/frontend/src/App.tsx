@@ -15,6 +15,7 @@ interface Signal {
 }
 
 const API_BASE = "http://localhost:8000";
+const QUANTUM_API = "http://127.0.0.1:8080";
 
 function App() {
   const [status, setStatus] = useState({
@@ -58,11 +59,26 @@ function App() {
     active_positions: [],
     last_log_lines: []
   });
+  const [fleetConfig, setFleetConfig] = useState<any>({});
+  const [affinityMap, setAffinityMap] = useState<any>({}); // [NEW v6.3.2]
+
+  const getIARecommendation = (symbol: string) => {
+    if (!affinityMap[symbol]) return "NEUTRAL / BALANZA";
+    return affinityMap[symbol].reco || "NEUTRAL / BALANZA";
+  };
+
+  const getIAClassText = (symbol: string) => {
+    const reco = getIARecommendation(symbol);
+    if (reco.includes('NEM1')) return { color: '#00f2ff', textShadow: '0 0 8px rgba(0,242,255,0.4)' };
+    if (reco.includes('NEM2')) return { color: '#ff4444', textShadow: '0 0 8px rgba(255,68,68,0.4)' };
+    return { color: '#666' };
+  };
 
   const isUpdatingLockRef = useRef(false);
   const [basketConfig, setBasketConfig] = useState({
     enabled: true,
-    threshold: 5.0,
+    threshold: 500.0,
+    threshold_pct: 2.0,
     last_trigger: null
   });
 
@@ -129,17 +145,43 @@ function App() {
     }
   };
 
+  const fetchFleetConfig = async () => {
+    try {
+      const res = await fetch(`${QUANTUM_API}/config`);
+      if (res.ok) {
+        const data = await res.json();
+        setFleetConfig(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch fleet config");
+    }
+  };
+
+  const fetchAffinity = async () => {
+    try {
+      const res = await fetch(`${QUANTUM_API}/affinity`);
+      if (res.ok) {
+        const data = await res.json();
+        setAffinityMap(data);
+      }
+    } catch (e) { }
+  };
+
   const fetchBasketConfig = async () => {
     if (isUpdatingLockRef.current) return;
     try {
-      // Add timestamp to avoid browser caching of the toggle state
-      const resp = await fetch(`${API_BASE}/api/basket-lock?t=${Date.now()}`, {
-        cache: 'no-store'
-      });
-      const data = await resp.json();
-      setBasketConfig(data);
+      // [v6.7.0] Leer Lock % dinámico desde la Quantum API
+      const resp = await fetch(`${QUANTUM_API}/system-status`);
+      if (resp.ok) {
+        const sysData = await resp.json();
+        setBasketConfig(prev => ({
+          ...prev,
+          threshold_pct: sysData.lock_pct || 0.25,
+          trust_tier: sysData.trust_tier
+        }));
+      }
     } catch (err) {
-      console.error("Failed to fetch basket config", err);
+      console.error("Failed to fetch quantum system status", err);
     }
   };
 
@@ -148,19 +190,23 @@ function App() {
     fetchAccounts();
     fetchData();
     fetchBasketConfig();
+    fetchFleetConfig();
+    fetchAffinity();
 
     const interval = setInterval(() => {
       fetchData();
       fetchBasketConfig();
+      fetchFleetConfig();
+      fetchAffinity();
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (basketConfig.threshold !== undefined && !isUpdatingLock) {
-      setThresholdInput(String(basketConfig.threshold));
+    if (basketConfig.threshold_pct !== undefined && !isUpdatingLock) {
+      setThresholdInput(String(basketConfig.threshold_pct));
     }
-  }, [basketConfig.threshold, isUpdatingLock]);
+  }, [basketConfig.threshold_pct, isUpdatingLock]);
 
   const handleSelectAccount = async (acc: any) => {
     if (acc === 'new') {
@@ -237,14 +283,14 @@ function App() {
   };
 
   const handleUpdateThreshold = async () => {
-    const threshold = parseFloat(thresholdInput);
-    if (isNaN(threshold)) {
-      setThresholdInput(String(basketConfig.threshold));
+    const threshold_pct = parseFloat(thresholdInput);
+    if (isNaN(threshold_pct)) {
+      setThresholdInput(String(basketConfig.threshold_pct));
       return;
     }
     isUpdatingLockRef.current = true;
     setIsUpdatingLock(true);
-    const newConfig = { ...basketConfig, threshold };
+    const newConfig = { ...basketConfig, threshold_pct };
     setBasketConfig(newConfig);
     try {
       await fetch(`${API_BASE}/api/basket-lock`, {
@@ -261,6 +307,52 @@ function App() {
       isUpdatingLockRef.current = false;
       setIsUpdatingLock(false);
     }
+  };
+
+  const handleFleetToggle = async (symbol: string) => {
+    const current = fleetConfig[symbol];
+    const newStatus = current.status === 'ON' ? 'OFF' : 'ON';
+    const updated = { ...current, status: newStatus };
+    
+    setFleetConfig((prev: any) => ({ ...prev, [symbol]: updated }));
+    
+    try {
+      await fetch(`${QUANTUM_API}/update/${symbol}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (e) { console.error("Fleet sync error"); }
+  };
+
+  const handleFleetRoleUpdate = async (symbol: string, role: string) => {
+    const current = fleetConfig[symbol];
+    const updated = { ...current, manual_nem_role: role, strategy_mode: 'MANUAL' };
+    
+    setFleetConfig((prev: any) => ({ ...prev, [symbol]: updated }));
+    
+    try {
+      await fetch(`${QUANTUM_API}/update/${symbol}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (e) { console.error("Fleet sync error"); }
+  };
+
+  const handleFleetModeAuto = async (symbol: string) => {
+    const current = fleetConfig[symbol];
+    const updated = { ...current, manual_nem_role: null, strategy_mode: 'AUTO' };
+    
+    setFleetConfig((prev: any) => ({ ...prev, [symbol]: updated }));
+    
+    try {
+      await fetch(`${QUANTUM_API}/update/${symbol}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (e) { console.error("Fleet sync error"); }
   };
 
   return (
@@ -491,7 +583,7 @@ function App() {
                     <ShieldCheck size={14} /> {basketConfig.enabled ? 'LOCK ACTIVE' : 'LOCK OFF'}
                   </button>
                   <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }}></div>
-                  <span style={{ fontSize: '0.65rem', color: '#888', fontWeight: 600 }}>TARGET:</span>
+                  <span style={{ fontSize: '0.65rem', color: '#888', fontWeight: 600 }}>LOCK %:</span>
                   <input
                     type="text"
                     value={thresholdInput}
@@ -502,7 +594,7 @@ function App() {
                       background: 'none',
                       border: 'none',
                       color: '#00ff88',
-                      width: '45px',
+                      width: '40px',
                       fontSize: '0.85rem',
                       fontWeight: 'bold',
                       textAlign: 'center',
@@ -510,7 +602,7 @@ function App() {
                       padding: '0'
                     }}
                   />
-                  <span style={{ fontSize: '0.7rem', color: '#555' }}>$</span>
+                  <span style={{ fontSize: '0.9rem', color: '#00ff88', fontWeight: 'bold' }}>%</span>
                 </div>
 
                 <button
@@ -577,6 +669,165 @@ function App() {
                 <p style={{ color: '#a0a0a0', fontSize: '0.8rem', marginTop: '0.5rem' }}>{stats.active_trades} Active Trades</p>
               </div>
             </div>
+
+            <section className="fleet-matrix" style={{ marginTop: '1.5rem' }}>
+                <div className="card" style={{ border: '1px solid rgba(0, 242, 255, 0.15)', background: 'rgba(0, 242, 255, 0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Zap size={20} color="#00f2ff" /> FLEET CONTROL OMEGA+
+                        </h3>
+                        <div className="status-label" style={{ fontSize: '0.7rem', color: '#00f2ff', opacity: 0.6 }}>
+                            BRIDGE PORT: 8080 (SECURE)
+                        </div>
+                    </div>
+
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                            <thead>
+                                <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#666' }}>
+                                    <th style={{ padding: '10px' }}>SYMBOL</th>
+                                    <th style={{ padding: '10px' }}>STATUS</th>
+                                    <th style={{ padding: '10px' }}>MODE</th>
+                                    <th style={{ padding: '10px' }}>FORCED ROLE</th>
+                                    <th style={{ padding: '10px' }}>SYNC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Object.keys(fleetConfig).length > 0 ? Object.keys(fleetConfig).map((symbol) => (
+                                    <tr key={symbol} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{symbol}</td>
+                                        <td style={{ padding: '10px' }}>
+                                            <button 
+                                                onClick={() => handleFleetToggle(symbol)}
+                                                style={{
+                                                    padding: '4px 10px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 'bold',
+                                                    background: fleetConfig[symbol].status === 'ON' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                                    color: fleetConfig[symbol].status === 'ON' ? '#00ff88' : '#666',
+                                                    border: `1px solid ${fleetConfig[symbol].status === 'ON' ? '#00ff88' : 'rgba(255,255,255,0.1)'}`,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {fleetConfig[symbol].status}
+                                            </button>
+                                        </td>
+                                        <td style={{ padding: '10px', fontSize: '0.75rem', opacity: 0.6 }}>
+                                            {fleetConfig[symbol].strategy_mode}
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <button 
+                                                    onClick={() => handleFleetModeAuto(symbol)}
+                                                    style={{
+                                                        padding: '2px 6px',
+                                                        borderRadius: '3px',
+                                                        fontSize: '0.65rem',
+                                                        background: fleetConfig[symbol].strategy_mode === 'AUTO' ? '#00ff88' : 'transparent',
+                                                        color: fleetConfig[symbol].strategy_mode === 'AUTO' ? '#000' : '#888',
+                                                        border: '1px solid rgba(0, 255, 136, 0.2)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >AUTO</button>
+                                                <button 
+                                                    onClick={() => handleFleetRoleUpdate(symbol, 'NEM1')}
+                                                    style={{
+                                                        padding: '2px 6px',
+                                                        borderRadius: '3px',
+                                                        fontSize: '0.65rem',
+                                                        background: fleetConfig[symbol].manual_nem_role === 'NEM1' ? '#00f2ff' : 'transparent',
+                                                        color: fleetConfig[symbol].manual_nem_role === 'NEM1' ? '#000' : '#888',
+                                                        border: '1px solid rgba(0, 242, 255, 0.2)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >N1</button>
+                                                <button 
+                                                    onClick={() => handleFleetRoleUpdate(symbol, 'NEM2')}
+                                                    style={{
+                                                        padding: '2px 6px',
+                                                        borderRadius: '3px',
+                                                        fontSize: '0.65rem',
+                                                        background: fleetConfig[symbol].manual_nem_role === 'NEM2' ? '#ff4444' : 'transparent',
+                                                        color: fleetConfig[symbol].manual_nem_role === 'NEM2' ? '#fff' : '#888',
+                                                        border: '1px solid rgba(255, 68, 68, 0.2)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >N2</button>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 10px #00ff88' }}></div>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', opacity: 0.3 }}>Establishing Quantum Link...</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            {/* ALPHA HEAT MAP (NEW v6.3.2) */}
+            <section className="alpha-heat-map" style={{ marginTop: '1.5rem' }}>
+              <div className="card" style={{ border: '1px solid rgba(0, 255, 136, 0.15)', background: 'rgba(0, 255, 136, 0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Database size={20} color="#00ff88" /> MACHINE LEARNING: ALPHA HEAT MAP
+                    </h3>
+                    <div className="status-label" style={{ fontSize: '0.7rem', color: '#00ff88', opacity: 0.6 }}>
+                        BAYESIAN LEVEL AFFINITY
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+                    {Object.keys(affinityMap).length > 0 ? Object.keys(affinityMap).map((symbol) => {
+                        const data = affinityMap[symbol];
+                        const n1 = data.NEM1?.sum_r || 0;
+                        const n2 = data.NEM2?.sum_r || 0;
+                        const dom1 = Math.max(0, n1);
+                        const dom2 = Math.max(0, n2);
+                        const total = dom1 + dom2;
+                        const per1 = total === 0 ? 50 : (dom1 / total) * 100;
+                        const per2 = total === 0 ? 50 : (dom2 / total) * 100;
+                        
+                        let rec = "Neutral / Balanza";
+                        let recColor = "#888";
+                        if (n1 > n2 + 0.5) { rec = "Switch NEM1 (Trend)"; recColor = "#00ff88"; }
+                        else if (n2 > n1 + 0.5) { rec = "Switch NEM2 (Antith)"; recColor = "#ff4444"; }
+
+                        return (
+                            <div key={symbol} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '8px' }}>
+                                    <span>{symbol}</span>
+                                    <span style={{ opacity: 0.4 }}>SCN: {(data.NEM1?.n || 0) + (data.NEM2?.n || 0)}</span>
+                                </div>
+                                <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <span style={{ opacity: 0.5 }}>THESIS (N1)</span>
+                                    <span style={{ color: n1 > 0 ? '#00ff88' : n1 < 0 ? '#ff4444' : '#666' }}>{n1.toFixed(2)}R</span>
+                                </div>
+                                <div style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                    <span style={{ opacity: 0.5 }}>ANTITH (N2)</span>
+                                    <span style={{ color: n2 > 0 ? '#00ff88' : n2 < 0 ? '#ff4444' : '#666' }}>{n2.toFixed(2)}R</span>
+                                </div>
+                                <div style={{ height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', display: 'flex', overflow: 'hidden' }}>
+                                    <div style={{ width: `${per1}%`, background: '#00ff88', boxShadow: '0 0 5px #00ff88' }}></div>
+                                    <div style={{ width: `${per2}%`, background: '#ff4444', boxShadow: '0 0 5px #ff4444' }}></div>
+                                </div>
+                                <div style={{ marginTop: '10px', textAlign: 'center', fontSize: '0.65rem', fontWeight: 'bold', color: recColor, textTransform: 'uppercase' }}>
+                                    {rec}
+                                </div>
+                            </div>
+                        );
+                    }) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', opacity: 0.3, fontSize: '0.8rem' }}>
+                            🛰️ ESPERANDO INTELIGENCIA DE SCOUTS...
+                        </div>
+                    )}
+                </div>
+              </div>
+            </section>
 
             <section className="market-activity">
               <div className="card" style={{ minHeight: '400px', overflowX: 'auto' }}>

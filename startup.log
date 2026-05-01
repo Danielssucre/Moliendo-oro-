@@ -1,0 +1,276 @@
+🚀 Starting Hybrid Trading Agent in ALWAYS-ON mode (Caffeinate)...
+ℹ️  Note: Keep your Mac connected to power for best results with the lid closed.
+DEBUG: L1 - STARTING EXECUTION
+⚠️ Skypie-Enel strategy module not found.
+🧠 POLIMATA RL: Online and Loaded.
+17:02:01 | INFO     | ✅ Telegram Bot Configured.
+DEBUG: L125 - GLOBAL SCOPE PROGRESSING
+17:02:01 | INFO     | 🔄 DYNAMIC PORTFOLIO LOADED: ['EURUSD', 'EURGBP', 'AUDNZD', 'AUDJPY', 'CADCHF', 'GBPCAD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'GBPJPY', 'EURJPY', 'CHFJPY', 'CADJPY', 'EURAUD', 'GBPAUD', 'EURNZD', 'NZDJPY', 'XAUUSD', 'XAGUSD', 'WTI', 'NAS100', 'SPX500', 'DAX40', 'US30', 'BTCUSD', 'ETHUSD', 'SOLUSD']
+17:02:01 | INFO     | ✅ Stop Hunt ML Model loaded from /Users/danielsuarezsucre/TRADING/trading_agent/models/stop_hunt_rf_calibrated.joblib
+17:02:01 | INFO     | 🤖 RL Trailing Manager: Model loaded from /Users/danielsuarezsucre/TRADING/trading_agent/models/infinite_rl_qnet_v1.pth
+🎯 MFE Sniper Surgical v2 Loaded from /Users/danielsuarezsucre/TRADING/trading_agent/models/mfe_sniper_surgical_v2.zip
+DEBUG: L1545 - ENTERING MAIN
+🛡️ [PROCESS GUARD] Found duplicate bot (PID 72908). Terminating for safety...
+✅ [PROCESS GUARD] Cleaned up 1 duplicate(s). System is now exclusive.
+📡 INITIALIZING SILICON MT5 BRIDGE (AXI CHALLENGE)...
+📡 INITIALIZING MT5 BRIDGE: FTMO-Demo (#1513000248)...
+✅ MT5 Initialized with Path (Portable)
+🍏 MT5 CONNECTED: (500, 5660, '27 Feb 2026')
+✅ SILICON MT5 BRIDGE INITIALIZED.
+17:02:02 | INFO     | 🧠 Global Quantum RL Risk Oracle loaded from models/risk_oracle_rl_v1.zip
+🏦 QUANTUM RISK RL: Active | Peak (Reset): $9599.60
+✅ NO Active Pending Orders.
+
+    ╔══════════════════════════════════════════════════════╗
+    ║   🦖 NANOBOT HIVE V5 (ALL-STARS EDITION) 🌟          ║
+    ║   Assets: Top 11 Performers (AUD, GBP, JPY, Crypto)  ║
+    ║   Mode:   H1 TREND SNIPER (Native FTMO Data)         ║
+    ║   Risk:   0.4% (PF 1.32 Config)                     ║
+    ║   Capital: $9,599.60                     ║
+    ╚══════════════════════════════════════════════════════╝
+    
+💰 LIVE BALANCE SYNC: $9,599.60 (USD)
+17:02:02 | INFO     | 📡 Sending Startup Message (Async)...
+17:02:02 | INFO     | 🧠 Gatekeeper AI Loaded (Mode: ACTIVE)
+17:02:02 | INFO     | 🚀 Starting FTMO Guardian Bot (Manual/Signal Mode)...
+17:02:02 | INFO     | ⚡ Entering 24/7 Signal Scan Loop...
+⏳ Scanning... (Ctrl+C to stop)
+17:02:02 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:02 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:02 | INFO     | 🔄 [DAILY RESET] New Day reference balance locked: $9,599.60 (Prev: $9,599.60)
+17:02:02 | DEBUG    | Starting new HTTPS connection (1): api.telegram.org:443
+17:02:02 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:02 | INFO     | 🛡️ IRON SHIELD v2: Market Guardian Initialized and Active.
+17:02:02 | INFO     | 🧠 [POLIMATA UPGRADE] Deploying Inverse Logic Engine v6.1...
+17:02:02 | INFO     | 🧠 [POLIMATA V7 NEME PRIME] HMM Loaded from models/polimata_hmm_v1.pkl.
+17:02:02 | INFO     | 🔍 [SYNC] Basket Lock: ON | TP Target: $4.00
+17:02:02 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:02 | INFO     | 📦 Portfolio Allocator: Sin modelo previo. Iniciando desde cero.
+17:02:02 | INFO     | 🧠 RL Portfolio Allocator: Online. Cold-start defaults activos hasta entrenamiento.
+17:02:02 | INFO     | 🎼 BOT ORCHESTRATOR: All-Weather + RL Allocator Initialized.
+17:02:02 | INFO     |   RL Allocator: ✅ ACTIVE
+17:02:02 | INFO     | 🎼 ALL-WEATHER: Orchestrator Online. Regime detection active.
+🧠 Meta-RL Selector: Iniciando desde cero (Cold Start)
+17:02:02 | INFO     | 🧠 META-RL SELECTOR: Online. 3-Strategy experiment ready.
+17:02:02 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:02 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:02 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:02 UTC | AI: ACTIVE17:02:03 | DEBUG    | https://api.telegram.org:443 "POST /bot8413380251:AAFE1Ge7RNx5lLHcETdBqOm0rSfvS8o_zyE/sendMessage HTTP/1.1" 200 411
+17:02:04 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:04 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:04 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:05 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:05 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:05 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:05 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:05 UTC | AI: ACTIVE17:02:06 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:06 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:06 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:06 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:06 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:06 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:06 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:06 UTC | AI: ACTIVE17:02:08 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:08 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:08 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:08 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:08 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:08 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:08 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:08 UTC | AI: ACTIVE17:02:10 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:10 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:10 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:10 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:10 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:10 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:10 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:10 UTC | AI: ACTIVE17:02:12 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:12 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:12 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:12 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:12 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:12 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:12 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:12 UTC | AI: ACTIVE17:02:13 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:13 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:14 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:14 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:14 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:14 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:14 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:14 UTC | AI: ACTIVE17:02:15 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:15 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:16 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:16 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:16 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:16 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:16 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:16 UTC | AI: ACTIVE17:02:17 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:17 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:17 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:18 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:18 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:18 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:18 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:18 UTC | AI: ACTIVE17:02:19 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:19 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:19 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:19 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:19 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:19 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:19 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:19 UTC | AI: ACTIVE17:02:21 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:21 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:21 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:21 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:21 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:21 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:21 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:21 UTC | AI: ACTIVE17:02:22 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:22 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:23 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:23 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:23 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:23 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:23 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:23 UTC | AI: ACTIVE17:02:24 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:24 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:25 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:25 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:25 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:25 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:25 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:25 UTC | AI: ACTIVE17:02:26 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:26 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:26 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:26 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:26 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:26 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:26 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:26 UTC | AI: ACTIVE17:02:28 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:28 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:28 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:28 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:28 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:28 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:28 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:28 UTC | AI: ACTIVE17:02:29 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:29 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:30 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:30 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:30 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:30 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:30 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:30 UTC | AI: ACTIVE17:02:31 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:31 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:32 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:32 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:32 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:32 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:32 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:32 UTC | AI: ACTIVE17:02:33 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:33 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:33 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:33 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:33 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:33 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:33 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:33 UTC | AI: ACTIVE17:02:35 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:35 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:35 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:35 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:35 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:35 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:35 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:35 UTC | AI: ACTIVE17:02:37 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:37 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:37 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:37 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:37 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:37 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:37 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:37 UTC | AI: ACTIVE17:02:38 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:38 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:39 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:39 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:39 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:39 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:39 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:39 UTC | AI: ACTIVE17:02:40 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:40 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:41 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:41 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:41 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:41 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:41 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:41 UTC | AI: ACTIVE17:02:42 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:42 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:43 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:43 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:43 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:43 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:43 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:43 UTC | AI: ACTIVE17:02:44 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:44 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:45 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:45 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:45 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:45 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:45 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:45 UTC | AI: ACTIVE17:02:46 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:46 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:47 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:47 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:47 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:47 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:47 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:47 UTC | AI: ACTIVE17:02:48 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:48 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:48 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:49 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:49 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:49 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:49 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:49 UTC | AI: ACTIVE17:02:50 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:50 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:50 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:50 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:50 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:50 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:50 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:50 UTC | AI: ACTIVE17:02:52 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:52 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:52 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:52 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:52 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:52 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:52 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:52 UTC | AI: ACTIVE17:02:53 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:53 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:54 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:54 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:54 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:54 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:54 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:54 UTC | AI: ACTIVE17:02:55 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:55 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:56 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:56 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:56 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:56 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:56 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:56 UTC | AI: ACTIVE17:02:57 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:57 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:57 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:58 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:58 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:58 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:58 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:58 UTC | AI: ACTIVE17:02:59 | DEBUG    | --- [STEP 0] Loop Start ---
+17:02:59 | DEBUG    | --- [STEP 1] Connection Verified ---
+17:02:59 | DEBUG    | --- [STEP 2] Pulse Checked ---
+17:02:59 | DEBUG    | --- [STEP 3] Guardian Checked ---
+17:02:59 | DEBUG    | --- [STEP 4] Orchestrator/Selector Ready ---
+17:02:59 | DEBUG    | --- [STEP 5] Management Start ---
+17:02:59 | DEBUG    | --- [STEP 6] Management Completed ---
+⏳ Scanning... 17:02:59 UTC | AI: ACTIVE

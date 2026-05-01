@@ -1,0 +1,55 @@
+{
+    "name": "Polimata V7 - Forex Only",
+    "version": "7.0.FOREX.ONLY",
+    "description": "Validador data-driven basado en análisis de 70,000+ señales + trading journal",
+    
+    "whitelist_symbols": [
+        "EURAUD",
+        "GBPAUD", 
+        "AUDUSD",
+        "NZDUSD",
+        "EURUSD",
+        "GBPJPY"
+    ],
+    
+    "blacklist_symbols": [
+        "EURNZD",
+        "NZDJPY",
+        "CHFJPY",
+        "USDCHF"
+    ],
+    
+    "optimal_hours": [14, 15, 16],
+    
+    "regime_thresholds": {
+        "calm_range": {
+            "adx_max": 20,
+            "vol_ratio_max": 0.002
+        },
+        "trending": {
+            "adx_min": 25
+        },
+        "chaotic": {
+            "vol_ratio_min": 0.005
+        }
+    },
+    
+    "champion_params": {
+        "rsi_buy_max": 25,
+        "rsi_sell_min": 75,
+        "sl_atr_mult": 1.5,
+        "tp_rr": 2.5,
+        "risk_pct": 0.005
+    },
+    
+    "limits": {
+        "max_positions": 3,
+        "max_risk_per_trade": 0.005
+    },
+    
+    "data_sources": {
+        "trading_journal": "data/historical/trading-journal.csv",
+        "operations_log": "logs/operations.jsonl",
+        "ftmo_research": "data/research/analyzed_ftmo_history.csv"
+    }
+}

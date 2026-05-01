@@ -31,6 +31,8 @@ class StatePersistence:
             "trust_tier": 1,
             "consecutive_baskets": 0,
             "daily_goal_reached": False,
+            "rollover_lock": False,
+            "reversal_profile": {}, 
             "version": "1.6.0"
         }
         state = db.load_json(self.file_path, default=defaults)
@@ -170,6 +172,22 @@ class StatePersistence:
             self.save()
 
         return self.state
+
+    def update_reversal_profile(self, symbol, atr_dist):
+        """[Fase 4] Registra una distancia ATR de reversión exitosa."""
+        if "reversal_profile" not in self.state:
+            self.state["reversal_profile"] = {}
+        
+        if symbol not in self.state["reversal_profile"]:
+            self.state["reversal_profile"][symbol] = []
+            
+        self.state["reversal_profile"][symbol].append(round(float(atr_dist), 2))
+        
+        # Mantener solo las últimas 100 muestras para adaptabilidad
+        if len(self.state["reversal_profile"][symbol]) > 100:
+            self.state["reversal_profile"][symbol] = self.state["reversal_profile"][symbol][-100:]
+            
+        self.save()
 
     def save(self):
         """Persistencia física atómica delegada al SecureDB Manager."""

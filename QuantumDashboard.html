@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUANTUM OMEGA+ | Command Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050505;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .neon-green { color: #00ff88; text-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+        .neon-red { color: #ff4444; }
+        .glow-btn-red {
+            background: #ff4444;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+            transition: all 0.3s ease;
+        }
+        .glow-btn-red:hover { box-shadow: 0 0 40px rgba(255, 68, 68, 0.6); }
+        .status-pulse {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.7; }
+        }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="quantumApp()" x-init="init()">
+    
+    <!-- Pantalla de Carga Inicial -->
+    <div x-show="loading" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-4 border-[#00ff88]/20 border-t-[#00ff88] rounded-full animate-spin mb-4"></div>
+        <div class="mono text-[10px] tracking-widest neon-green uppercase">Iniciando Sistemas de Flota...</div>
+    </div>
+
+    <!-- Header -->
+    <header class="p-6 border-b border-white/5 flex justify-between items-center glass sticky top-0 z-50">
+        <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-extrabold tracking-tighter italic">QUANTUM <span class="neon-green">OMEGA+</span></h1>
+            <div class="text-[10px] mono opacity-40 uppercase tracking-widest hidden md:block">Fleet Control OS v4.0.3</div>
+        </div>
+        <div class="flex gap-8 items-center">
+            <div class="text-right">
+                <div class="flex items-center justify-end">
+                    <span class="status-pulse bg-[#00ff88]"></span>
+                    <span class="mono text-xs text-[#00ff88]">OMEGA LINK ACTIVE</span>
+                </div>
+            </div>
+            <button @click="atomicPurge()" class="glow-btn-red px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest text-black">
+                🌊 Atomic Purge
+            </button>
+        </div>
+    </header>
+
+    <main class="p-8 max-w-[1600px] mx-auto grid grid-cols-12 gap-8" x-cloak x-show="!loading">
+        
+        <!-- Left: Asset Matrix -->
+        <div class="col-span-12 lg:col-span-8">
+            <div class="glass rounded-2xl overflow-hidden border border-white/5">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                    <h2 class="text-lg font-bold flex items-center gap-2">ASSET MATRIX</h2>
+                    <div class="text-xs mono opacity-40" x-text="'TRACKING: ' + Object.keys(config).length + ' PAIRS'"></div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="text-[10px] uppercase tracking-widest opacity-40 border-b border-white/5">
+                            <tr>
+                                <th class="p-6">Símbolo</th>
+                                <th class="p-6">Estado</th>
+                                <th class="p-6">Estrategia</th>
+                                <th class="p-6">Rol Némesis</th>
+                                <th class="p-6">Límite</th>
+                                <th class="p-6 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="mono text-sm divide-y divide-white/[0.03]">
+                            <template x-for="(settings, symbol) in config" :key="symbol">
+                                <tr class="hover:bg-white/[0.02] transition-colors group">
+                                    <td class="p-6 font-extrabold text-white/90" x-text="symbol"></td>
+                                    <td class="p-6">
+                                        <button @click="toggleStatus(symbol)" 
+                                            :class="settings.status === 'ON' ? 'text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/30' : 'text-zinc-500 bg-white/5 border-white/10'"
+                                            class="px-4 py-1.5 rounded border text-[10px] font-bold transition-all"
+                                            x-text="settings.status">
+                                        </button>
+                                    </td>
+                                    <td class="p-6">
+                                        <select @change="updateField(symbol, 'strategy_mode', $event.target.value)" 
+                                            class="bg-transparent border-none focus:ring-0 cursor-pointer text-xs">
+                                            <option value="AUTO" :selected="settings.strategy_mode === 'AUTO'">AUTO-PILOT</option>
+                                            <option value="MANUAL" :selected="settings.strategy_mode === 'MANUAL'">MANUAL</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-6 text-center">
+                                        <div x-show="settings.strategy_mode === 'MANUAL'" class="flex gap-2">
+                                            <button @click="updateField(symbol, 'manual_nem_role', 'NEM1')"
+                                                :class="settings.manual_nem_role === 'NEM1' ? 'border-[#00ff88] text-[#00ff88]' : 'border-white/10 opacity-30'"
+                                                class="px-2 py-0.5 rounded border text-[10px]">N1</button>
+                                            <button @click="updateField(symbol, 'manual_nem_role', 'NEM2')"
+                                                :class="settings.manual_nem_role === 'NEM2' ? 'border-[#ff4444] text-[#ff4444]' : 'border-white/10 opacity-30'"
+                                                class="px-2 py-0.5 rounded border text-[10px]">N2</button>
+                                        </div>
+                                        <div x-show="settings.strategy_mode === 'AUTO'" class="flex justify-center">
+                                            <template x-if="affinityMap[symbol]">
+                                                <div class="flex items-center gap-1.5 grayscale-[0.5] opacity-50">
+                                                    <span class="text-[9px] mono uppercase opacity-30 italic">IA:</span>
+                                                    <span :class="getIAClassText(symbol)" class="text-[10px] font-bold" x-text="getIARecommendation(symbol).includes('NEM1') ? 'N1' : 'N2'"></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="!affinityMap[symbol]">
+                                                <span class="opacity-10 italic text-[10px]">Neural (Init)</span>
+                                            </template>
+                                        </div>
+                                    </td>
+                                    <td class="p-6 opacity-40 text-xs" x-text="settings.max_levels_override + ' LVLS'"></td>
+                                    <td class="p-6 text-right">
+                                        <button @click="saveSymbol(symbol)" class="p-2 hover:bg-white/10 rounded-lg">
+                                            <svg class="w-4 h-4 neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 🧠 MACHINE LEARNING: ALPHA HEAT MAP (v4.5 Cyber-HUD) -->
+            <div class="mt-8 glass rounded-2xl overflow-hidden border border-white/5">
+                <div class="p-6 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-cyan-950/20 to-transparent">
+                    <h2 class="text-lg font-black italic tracking-tighter flex items-center gap-3">
+                        <span class="p-2 bg-cyan-500/10 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.2)]">🧠</span>
+                        MACHINE LEARNING: <span class="text-cyan-400">ALPHA HEAT MAP</span>
+                    </h2>
+                    <div class="flex items-center gap-4">
+                         <div class="text-[9px] mono px-2 py-1 bg-white/5 rounded border border-white/10 opacity-60">IA ENGINE: ACTIVE</div>
+                         <div class="status-pulse bg-cyan-400"></div>
+                    </div>
+                </div>
+                
+                <div class="p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <template x-for="(data, symbol) in affinityMap" :key="symbol">
+                        <div :class="getIAClass(symbol)" 
+                             class="bg-black/40 border p-4 rounded-xl space-y-4 transition-all duration-500 hover:scale-[1.02] relative group overflow-hidden">
+                            
+                            <!-- Background Glow Effect -->
+                            <div :class="getIAGlow(symbol)" class="absolute -right-4 -top-4 w-16 h-16 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                            
+                            <div class="flex justify-between items-end relative z-10">
+                                <div>
+                                    <h4 class="text-[10px] mono opacity-40 uppercase tracking-widest">Asset</h4>
+                                    <div class="text-sm font-black" x-text="symbol"></div>
+                                </div>
+                                <div class="text-right">
+                                    <h4 class="text-[10px] mono opacity-40 uppercase tracking-widest text-right">Dominance</h4>
+                                    <div class="text-[10px] font-bold" :class="getScoreColor(getNetScore(symbol))" x-text="getNetScore(symbol).toFixed(2) + ' R'"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Precision Bars -->
+                            <div class="space-y-1 relative z-10">
+                                <div class="flex justify-between text-[8px] mono opacity-50 uppercase tracking-tighter">
+                                    <span>NEM1 (Trend)</span>
+                                    <span x-text="(data.NEM1?.sum_r || 0).toFixed(1)"></span>
+                                </div>
+                                <div class="h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div :style="'width: ' + getDominance(symbol, 'NEM1') + '%'" 
+                                         class="bg-cyan-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(6,182,212,0.8)]"></div>
+                                </div>
+                                
+                                <div class="flex justify-between text-[8px] mono opacity-50 uppercase tracking-tighter pt-1">
+                                    <span>NEM2 (Antith)</span>
+                                    <span x-text="(data.NEM2?.sum_r || 0).toFixed(1)"></span>
+                                </div>
+                                <div class="h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div :style="'width: ' + getDominance(symbol, 'NEM2') + '%'" 
+                                         class="bg-orange-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Decision Tag -->
+                            <div class="pt-2 relative z-10">
+                                <div class="text-[9px] font-black uppercase tracking-widest text-center py-1.5 rounded-lg border border-white/5 bg-white/5"
+                                     :class="getIAClassText(symbol)" x-text="getIARecommendation(symbol)">
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                
+                <div x-show="Object.keys(affinityMap).length === 0" class="p-20 text-center space-y-4">
+                    <div class="inline-block p-4 bg-white/5 rounded-full animate-pulse text-cyan-400">🛰️</div>
+                    <div class="mono text-[10px] opacity-30 uppercase tracking-[0.3em]">Establishing Quantum Link to Harvester...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="col-span-12 lg:col-span-4 space-y-8">
+            <div class="glass p-8 rounded-2xl border-l-4 border-[#00ff88]">
+                <h3 class="text-[10px] mono uppercase opacity-40 tracking-widest mb-4">Estado de la Flota</h3>
+                <div class="text-4xl font-black italic"><span class="neon-green" x-text="activeCount()">0</span> <span class="text-white/20">/</span> <span class="text-white/40" x-text="Object.keys(config).length">0</span></div>
+            </div>
+
+            <div class="glass rounded-2xl flex flex-col h-[500px] border border-white/5">
+                <div class="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+                    <div class="text-[10px] mono uppercase opacity-60">Terminal Log</div>
+                </div>
+                <div class="flex-1 p-4 mono text-[10px] overflow-y-auto space-y-2 text-white/40">
+                    <template x-for="log in logs">
+                        <div x-html="formatLog(log)"></div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        function quantumApp() {
+            return {
+                config: {},
+                logs: [],
+                affinityMap: {}, // [NEW v6.3.2]
+                loading: true,
+                apiUrl: 'http://127.0.0.1:8080', // Puerto del Bridge
+                
+                async init() {
+                    console.log("Iniciando HUD...");
+                    await this.fetchConfig();
+                    await this.fetchAffinity();
+                    this.loading = false;
+                    this.startPolling();
+                },
+
+                async fetchConfig() {
+                    try {
+                        const res = await fetch(`${this.apiUrl}/config`, { cache: 'no-store' });
+                        if (!res.ok) throw new Error("Server Error");
+                        const data = await res.json();
+                        if (data && Object.keys(data).length > 0) {
+                            this.config = data;
+                        }
+                    } catch (e) {
+                        console.error("Link Failure:", e);
+                    }
+                },
+
+                async fetchLogs() {
+                    try {
+                        const res = await fetch(`${this.apiUrl}/logs`);
+                        const data = await res.json();
+                        this.logs = data.logs || [];
+                    } catch (e) {}
+                },
+
+                // [NEW v6.3.2] RECOLECTAR AFINIDAD
+                async fetchAffinity() {
+                    try {
+                        const res = await fetch(`${this.apiUrl}/affinity`);
+                        const data = await res.json();
+                        this.affinityMap = data || {};
+                    } catch (e) {}
+                },
+
+                // [v4.5] HELPERS VISUALES CYBER-HUD
+                getScoreColor(score) {
+                    if (score > 0) return 'text-cyan-400 font-bold';
+                    if (score < 0) return 'text-orange-500 font-bold';
+                    return 'opacity-20';
+                },
+
+                getNetScore(symbol) {
+                    const data = this.affinityMap[symbol];
+                    if (!data) return 0;
+                    return (data.NEM1?.sum_r || 0) + (data.NEM2?.sum_r || 0);
+                },
+
+                getDominance(symbol, role) {
+                    const data = this.affinityMap[symbol];
+                    if (!data) return 50;
+                    const r1 = Math.abs(data.NEM1?.sum_r || 0);
+                    const r2 = Math.abs(data.NEM2?.sum_r || 0);
+                    const total = r1 + r2;
+                    if (total === 0) return 50;
+                    return role === 'NEM1' ? (r1 / total) * 100 : (r2 / total) * 100;
+                },
+
+                getIARecommendation(symbol) {
+                    const data = this.affinityMap[symbol];
+                    if (!data) return "Analizando...";
+                    const n1 = data.NEM1?.sum_r || 0;
+                    const n2 = data.NEM2?.sum_r || 0;
+                    if (n1 > n2) return "NEM1 (Trend)";
+                    if (n2 > n1) return "NEM2 (Antith)";
+                    return "Balanza Neutra";
+                },
+
+                getIAClass(symbol) {
+                    const rec = this.getIARecommendation(symbol);
+                    if (rec.includes("NEM1")) return "border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]";
+                    if (rec.includes("NEM2")) return "border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]";
+                    return "border-white/5";
+                },
+
+                getIAClassText(symbol) {
+                    const rec = this.getIARecommendation(symbol);
+                    if (rec.includes("NEM1")) return "text-cyan-400";
+                    if (rec.includes("NEM2")) return "text-orange-500";
+                    return "opacity-30";
+                },
+
+                getIAGlow(symbol) {
+                    const rec = this.getIARecommendation(symbol);
+                    if (rec.includes("NEM1")) return "bg-cyan-500";
+                    if (rec.includes("NEM2")) return "bg-orange-500";
+                    return "bg-white";
+                },
+
+                activeCount() {
+                    return Object.values(this.config).filter(s => s.status === 'ON').length;
+                },
+
+                toggleStatus(symbol) {
+                    this.config[symbol].status = this.config[symbol].status === 'ON' ? 'OFF' : 'ON';
+                    this.saveSymbol(symbol);
+                },
+
+                async updateField(symbol, field, value) {
+                    this.config[symbol][field] = value;
+                    await this.saveSymbol(symbol);
+                },
+
+                async saveSymbol(symbol) {
+                    try {
+                        await fetch(`${this.apiUrl}/update/${symbol}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.config[symbol])
+                        });
+                    } catch (e) { console.error("Save Error"); }
+                },
+
+                async atomicPurge() {
+                    if (confirm("🚨 ATOMIC PURGE: Confirmar liquidación?")) {
+                        await fetch(`${this.apiUrl}/atomic-purge`, { method: 'POST' });
+                        await this.fetchConfig();
+                    }
+                },
+
+                formatLog(log) {
+                    return log
+                        .replace(/📡/g, '<span class="neon-green">📡</span>')
+                        .replace(/✅/g, '<span>✅</span>')
+                        .replace(/OFF/g, '<span class="text-red-500">OFF</span>')
+                        .replace(/🛰️/g, '<span class="text-cyan-400">🛰️</span>');
+                },
+
+                startPolling() {
+                    setInterval(() => {
+                        this.fetchConfig();
+                        this.fetchLogs();
+                        this.fetchAffinity(); // [NEW v6.3.2]
+                    }, 5000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

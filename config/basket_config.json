@@ -1,5 +1,10 @@
 {
-    "enabled": true,
-    "threshold": 5.0,
-    "last_trigger": "2026-03-23 10:28:58"
+  "threshold_pct": 2.0,
+  "trailing_activation_pct": 1.2,
+  "trailing_distance_pct": 0.5,
+  "weekly_target_pct": 3.0,
+  "weekly_floor_lock_pct": 1.0,
+  "time_decay_enabled": true,
+  "time_decay_hours": 24,
+  "time_decay_target_reduction": 0.5
 }

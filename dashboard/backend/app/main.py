@@ -40,9 +40,14 @@ async def get_signals():
     
     import glob
     log_files = glob.glob(os.path.join(PROJECT_ROOT, "logs/trading_*.log"))
-    dash_log = os.path.join(PROJECT_ROOT, "logs/dashboard_bot.log")
-    if os.path.exists(dash_log):
-        log_files.append(dash_log)
+    dashboard_logs = [
+        os.path.join(PROJECT_ROOT, "logs/dashboard_bot.log"),
+        os.path.join(PROJECT_ROOT, "logs/run_live_dashboard.log"),
+        os.path.join(PROJECT_ROOT, "logs/trading_live.log")
+    ]
+    for dl in dashboard_logs:
+        if os.path.exists(dl):
+            log_files.append(dl)
         
     if not log_files:
         return []

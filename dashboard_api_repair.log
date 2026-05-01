@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/danielsuarezsucre/TRADING/trading_agent/dashboard/backend/app/main.py", line 5, in <module>
+    from app.services.mt5_service import MT5Service
+  File "/Users/danielsuarezsucre/TRADING/trading_agent/dashboard/backend/app/services/mt5_service.py", line 7, in <module>
+    from siliconmetatrader5 import MetaTrader5
+ModuleNotFoundError: No module named 'siliconmetatrader5'
