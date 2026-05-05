@@ -1,236 +1,285 @@
-"""
-Risk management calculations for position sizing and stop loss/take profit.
-"""
-from typing import Dict, Tuple
-from dataclasses import dataclass
+import json
+import logging
+import os
 
-from ..utils.config import config
-from ..utils.logger import logger
+logger = logging.getLogger("Nanobot.RiskManager")
 
+# Ruta al AffinityMap (Single Source of Truth)
+_AFFINITY_MAP_PATH = "data/research/affinity_map.json"
 
-@dataclass
-class RiskParameters:
-    """Risk management parameters for a trade."""
-    entry_price: float
-    stop_loss: float
-    take_profit: float
-    risk_pips: float
-    reward_pips: float
-    risk_reward_ratio: float
-    position_size: float
-    risk_amount: float
-
-
-class RiskCalculator:
-    """Calculate risk management parameters."""
-    
-    def __init__(self, capital: float = None):
+class MeritocraticRiskManager:
+    def __init__(self, mt5_client, global_cap=0.025):
+        self.mt5 = mt5_client
+        self.GLOBAL_CAP = global_cap
+        self.transit_risk = 0.0  # Riesgo aprobado en el micro-ciclo actual
+        logger.info(f"⚖️ [RISK TRIBUNAL] Inicializado con Global Cap: {global_cap*100:.2f}%")
+        
+    def calculate_floating_risk(self, positions, account_info, fallback_atr_dict):
         """
-        Initialize risk calculator.
-        
-        Args:
-            capital: Trading capital (uses config default if not provided)
+        Calcula el riesgo comprometido forense. Implementa el BLINDAJE NÉMESIS 
+        contra SL asíncronos (0.0) inyectando 2.0 ATR de emergencia.
         """
-        self.capital = capital or config.get_trading_config("risk_management.default_capital")
-        self.max_risk_percent = config.get_trading_config("risk_management.max_risk_per_trade_percent")
-        self.min_rr_ratio = config.get_trading_config("risk_management.min_risk_reward_ratio")
-        self.atr_multiplier = config.get_trading_config("risk_management.atr_multiplier_stop_loss")
-
-    def set_capital(self, capital: float) -> None:
-        """Update capital for calculations."""
-        self.capital = capital
-
-    def set_risk_percent(self, percent: float) -> None:
-        """Update risk percentage for calculations."""
-        self.max_risk_percent = percent
-    
-    def calculate_stop_loss(
-        self,
-        entry_price: float,
-        direction: str,
-        atr: float
-    ) -> float:
-        """
-        Calculate stop loss based on ATR.
+        total_risk_usd = 0.0
         
-        Args:
-            entry_price: Entry price
-            direction: "buy" or "sell"
-            atr: Current ATR value
-        
-        Returns:
-            Stop loss price
-        """
-        stop_distance = atr * self.atr_multiplier
-        
-        if direction == "buy":
-            stop_loss = entry_price - stop_distance
-        else:  # sell
-            stop_loss = entry_price + stop_distance
-        
-        return round(stop_loss, 5)
-    
-    def calculate_take_profit(
-        self,
-        entry_price: float,
-        stop_loss: float,
-        direction: str,
-        rr_ratio_base: float = None,
-        atr: float = None
-    ) -> float:
-        """
-        Calculate take profit based on risk-reward ratio and volatility.
-        """
-        rr_ratio = rr_ratio_base or self.min_rr_ratio
-        
-        # Calculate risk distance
-        risk_distance = abs(entry_price - stop_loss)
-        
-        # Dynamic Multiplier based on ATR (Institutional standard)
-        # In higher volatility, we aim for larger RR ratios
-        volatility_boost = 1.0
-        if atr:
-            # Simple heuristic: if ATR is high relative to avg, boost TP targets
-            # This is a simplified version of the "Dynamic Exit Algorithm"
-            volatility_boost = min(1.5, max(0.8, (atr * 10 / entry_price) * 100)) # Clamped boost
-            logger.debug(f"Volatility Exit Boost: {volatility_boost:.2f}x")
+        if not positions:
+            return 0.0
             
-        reward_distance = risk_distance * rr_ratio * volatility_boost
-        
-        if direction == "buy":
-            take_profit = entry_price + reward_distance
-        else:  # sell
-            take_profit = entry_price - reward_distance
-        
-        return round(take_profit, 5)
-    
-    def calculate_position_size(
-        self,
-        entry_price: float,
-        stop_loss: float,
-        pair: str = "EURUSD",
-        symbol_info: object = None
-    ) -> float:
+        for p in positions:
+            symbol = p.symbol
+            sym_info = self.mt5.symbol_info(symbol)
+            
+            # Protección contra fallos de socket de la API
+            if sym_info is None:
+                logger.warning(f"No se pudo obtener sym_info para {symbol}. Omitiendo cálculo exacto, riesgo subestimado.")
+                continue
+                
+            tick_value = sym_info.trade_tick_value
+            point = sym_info.point
+            
+            sl_price = p.sl
+            # BLINDAJE NÉMESIS: Si el SL es 0.0, usamos el fallback (2.0 * ATR)
+            if sl_price == 0.0:
+                atr = fallback_atr_dict.get(symbol, 0.0015) # Default 15 pips si no hay ATR
+                sl_price = p.price_open - (atr * 2.0) if p.type == 0 else p.price_open + (atr * 2.0)
+            
+            # Cálculo exacto de distancia en la moneda de la cuenta (USD)
+            dist_points = abs(p.price_open - sl_price) / (point + 1e-12)
+            risk_usd = p.volume * dist_points * tick_value
+            total_risk_usd += risk_usd
+            
+        return total_risk_usd / account_info.equity if account_info and account_info.equity > 0 else 0.0
+
+    def get_meritocratic_risk(self, symbol, symbol_data, base_risk, available_cap, current_hour=None, current_spread_pips=None, symbol_atr_pips=None, stasis=False):
         """
-        Calculate position size based on institutional risk formulas.
+        Tribunal de Asignación V9.1: Aplica el Multiplicador Bayesiano 3D, 
+        Filtro de Liquidez y la Guillotina FTMO + Capa de Soberanía.
+        """
+        if stasis:
+            logger.info(f"🛡️ [SOVEREIGNTY STASIS] {symbol} | Operativa bloqueada por meta diaria cumplida (MVA).")
+            return 0.0
+
+        reco = symbol_data.get("reco", "NEM1 (Trend)")
+        role = "NEM2" if "Antith" in reco else "NEM1"
         
+        # Extraer datos del rol activo
+        role_data = symbol_data.get(role, {})
+        scn = role_data.get("n", 0)
+        sum_r = role_data.get("sum_r", 0.0)
+        
+        # 0. FILTRO DE LIQUIDEZ TÉRMICA (Vector 1)
+        if current_spread_pips is not None and symbol_atr_pips is not None:
+            # Si el spread es > 20% del ATR, el riesgo es 0 (SILENT MODE)
+            if current_spread_pips > (0.20 * symbol_atr_pips):
+                logger.warning(f"🚫 [LIQUIDITY FILTER] {symbol} spread ({current_spread_pips:.1f}) > 20% ATR ({0.2*symbol_atr_pips:.1f}). SILENT MODE.")
+                return 0.0
+
+        # 1. Multiplicador Alpha Bayesiano (Tensor 3D)
+        multiplier = 1.0
+        edge = 0.0
+        
+        # Primero intentar mérito horario (Matriz de Cuarentena Dinámica)
+        if current_hour is not None and "hourly" in role_data:
+            hour_key = str(current_hour)
+            h_data = role_data["hourly"].get(hour_key, {"n": 0, "sum_r": 0.0})
+            if h_data["n"] >= 3:
+                h_edge = h_data["sum_r"] / h_data["n"]
+                if h_edge <= -0.3: 
+                    multiplier = 0.20 # Cuarentena Horaria
+                    logger.info(f"⏳ [HOURLY QUARANTINE] {symbol} Hour {current_hour} | Edge: {h_edge:.2f}R")
+                elif h_edge > 0.4:
+                    multiplier = 1.50 # Impulso Horario
+        
+        # Si no hay cuarentena horaria, usar mérito general
+        if multiplier == 1.0 and scn >= 5:
+            edge = sum_r / scn
+            if role == "NEM1": # Tendencia
+                if edge <= -0.2: multiplier = 0.20    # Cuarentena General
+                elif edge < 0.0: multiplier = 0.50    # Leve castigo
+                elif edge > 0.3: multiplier = 2.00    # Esteroides Alpha
+            else:
+                multiplier = 1.00 # NEM2: Reversión perdonada
+        elif scn < 5 and multiplier == 1.0:
+            multiplier = 0.50 # Sonda de descubrimiento
+            
+        target_risk = base_risk * multiplier
+        
+        # 2. Guillotina FTMO (Global Cap)
+        available_budget = max(0.0, available_cap - self.transit_risk)
+        adjusted_risk = min(target_risk, available_budget)
+        
+        # 3. El Pasaporte de Riesgo (Audit Log)
+        status = f"CHOKED to {adjusted_risk*100:.2f}% (Budget Limit)" if adjusted_risk < target_risk else "APPROVED"
+        logger.info(f"[RISK PASSPORT] {symbol} | Role: {role} | Multiplier: {multiplier}x | Status: {status}")
+        
+        return max(0.0, adjusted_risk)
+
+    def get_omega_core_allocation(self, symbol: str, role: str, account_equity: float,
+                                  max_risk_pct: float = 0.01) -> dict:
+        """
+        [v10.0.0] OMEGA CORE: ENRUTADOR MAESTRO DEL 1%
+        ================================================
+        Consulta el VitalityOracle y calcula la distribución asimétrica del riesgo
+        disponible entre los 7 niveles de la MegaGrid.
+
+        Reglas:
+          - Si el sistema está en COMA → bloqueo total, todos a Scout (0.01)
+          - Si un nivel está en CUARENTENA (N<30) → Scout (0.01), sin riesgo real
+          - Si un nivel está INFECTADO (PF<1.2) → Scout (0.01), peso=0
+          - El presupuesto restante se distribuye proporcionalmente a V_L de sanos
+
         Args:
-            entry_price: Entry price
-            stop_loss: Stop loss price
-            pair: Currency pair
-            symbol_info: MT5 symbol info object (optional, for precise tick-value math)
-        
+            symbol:         Símbolo a operar (ej. "EURUSD")
+            role:           Rol activo ("NEM1" o "NEM2")
+            account_equity: Equity actual de la cuenta en USD
+            max_risk_pct:   Techo global de riesgo (default 1%)
+
         Returns:
-            Position size in lots
+            {
+              "level_risks": {"L1": 0.0, "L2": 12.4, ..., "L7": 47.0},  ← USD por nivel
+              "health":      str,     ← Estado del sistema ("ALPHA"/"SALUDABLE"/...)
+              "v_global":    float,   ← Signo vital global
+              "scout_only":  bool,    ← True = todos en cuarentena, usar 0.01 lotes
+              "weights":     dict,    ← Pesos normalizados por nivel
+            }
         """
-        risk_amount = self.capital * (self.max_risk_percent / 100)
-        sl_diff = abs(entry_price - stop_loss)
-        
-        if sl_diff == 0: return 0.0
-        
-        # UNIVERSAL FORMULA (Phase 3/4 Implementation)
-        if symbol_info:
-            tick_size = symbol_info.trade_tick_size
-            tick_value = symbol_info.trade_tick_value
-            if tick_size > 0 and tick_value > 0:
-                lots = risk_amount / ((sl_diff / tick_size) * tick_value)
-                return round(lots, 2)
-        
-        # Legacy/Fallback (only if MT5 info is missing)
-        pip_size = 0.01 if "JPY" in pair else 0.0001
-        risk_pips = sl_diff / pip_size
-        pip_value_per_lot = 10.0 # XXX/USD standard
-        
-        position_size = risk_amount / (risk_pips * pip_value_per_lot)
-        return round(position_size, 2)
-    
-    def calculate_full_risk_params(
-        self,
-        entry_price: float,
-        direction: str,
-        atr: float,
-        pair: str = "EURUSD",
-        rr_ratio: float = None,
-        symbol_info: object = None
-    ) -> RiskParameters:
-        """
-        Calculate all risk parameters.
-        
-        Args:
-            entry_price: Entry price
-            direction: "buy" or "sell"
-            atr: Current ATR
-            pair: Currency pair
-            rr_ratio: Risk-reward ratio
-        
-        Returns:
-            RiskParameters object
-        """
-        logger.progress("Calculating risk management parameters")
-        
-        # Calculate stop loss
-        stop_loss = self.calculate_stop_loss(entry_price, direction, atr)
-        
-        # Calculate take profit (Dynamic ATR-based targets)
-        take_profit = self.calculate_take_profit(
-            entry_price, stop_loss, direction, rr_ratio, atr=atr
+        try:
+            from nanobot.vitality_oracle import VitalityOracle
+        except ImportError:
+            logger.error("❌ [OMEGA CORE] VitalityOracle no disponible. Usando riesgo plano.")
+            return self._fallback_allocation(account_equity, max_risk_pct)
+
+        # --- CARGAR MAPA DE AFINIDAD ---
+        affinity_map = {}
+        if os.path.exists(_AFFINITY_MAP_PATH):
+            try:
+                with open(_AFFINITY_MAP_PATH, "r") as f:
+                    affinity_map = json.load(f)
+            except Exception as e:
+                logger.warning(f"⚠️ [OMEGA CORE] Error leyendo AffinityMap: {e}")
+
+        oracle = VitalityOracle()
+
+        # --- DIAGNÓSTICO COMPLETO ---
+        diagnosis = oracle.full_diagnosis(affinity_map, symbol, role)
+        global_health = diagnosis["global_health"]
+        role_diagnosis = diagnosis["role_diagnosis"]
+
+        health_str = global_health["health"]
+        v_global   = global_health["v_global"]
+        weights    = role_diagnosis["weights"]
+
+        # --- PRESUPUESTO DISPONIBLE ---
+        max_risk_usd = account_equity * max_risk_pct
+
+        # --- REGLA 1: SISTEMA EN COMA → BLOQUEO TOTAL ---
+        if health_str == "COMA":
+            logger.warning(
+                f"🚨 [OMEGA CORE] V_Global={v_global:.4f} → COMA. "
+                f"Riesgo bloqueado. Solo Scouts de exploración."
+            )
+            return {
+                "level_risks": {f"L{i}": 0.0 for i in range(1, 8)},
+                "health":      health_str,
+                "v_global":    v_global,
+                "scout_only":  True,
+                "weights":     weights,
+            }
+
+        # --- REGLA 2: TODOS EN CUARENTENA → MODO BIOPSIA ---
+        total_force = role_diagnosis["total_force"]
+        if total_force == 0:
+            logger.info(
+                f"⚗️ [OMEGA CORE] {symbol}/{role}: Sin niveles sanos aún. "
+                f"Modo Biopsia (0.01 lotes en todos)."
+            )
+            return {
+                "level_risks": {f"L{i}": 0.0 for i in range(1, 8)},
+                "health":      health_str,
+                "v_global":    v_global,
+                "scout_only":  True,
+                "weights":     weights,
+            }
+
+        # --- REGLA 3: DISTRIBUCIÓN ASIMÉTRICA DEL PRESUPUESTO ---
+        # Costo de los Scouts (niveles no sanos que igual se disparan a 0.01)
+        # Por simplicidad, asumimos que el costo de cada scout es mínimo y no se
+        # descuenta del presupuesto (los scouts usan su propio lote mínimo fijo)
+        level_risks = {}
+        for lk in [f"L{i}" for i in range(1, 8)]:
+            weight = weights.get(lk, 0.0)
+            if weight > 0:
+                level_risks[lk] = round(max_risk_usd * weight, 4)
+            else:
+                level_risks[lk] = 0.0  # INFECTADO o CUARENTENA → Scout (sin USD real)
+
+        # --- AUDIT LOG ---
+        healthy = role_diagnosis["healthy_count"]
+        quarant = role_diagnosis["quarantine_count"]
+        logger.info(
+            f"💰 [OMEGA CORE] {symbol}/{role} | Health: {health_str} | V_Global: {v_global:.4f} | "
+            f"Presupuesto: ${max_risk_usd:.2f} | Niveles sanos: {healthy}/7 | En cuarentena: {quarant}"
         )
-        
-        # Calculate pips
-        pip_size = 0.01 if "JPY" in pair else 0.0001
-        risk_pips = abs(entry_price - stop_loss) / pip_size
-        reward_pips = abs(take_profit - entry_price) / pip_size
-        
-        # Calculate actual risk-reward ratio
-        actual_rr = reward_pips / risk_pips if risk_pips > 0 else 0
-        
-        # Calculate position size
-        position_size = self.calculate_position_size(entry_price, stop_loss, pair, symbol_info=symbol_info)
-        
-        # Calculate risk amount
-        risk_amount = self.capital * (self.max_risk_percent / 100)
-        
-        logger.success(
-            f"Risk params: SL={stop_loss:.5f} ({risk_pips:.1f} pips), "
-            f"TP={take_profit:.5f} ({reward_pips:.1f} pips), "
-            f"RR=1:{actual_rr:.2f}"
-        )
-        
-        return RiskParameters(
-            entry_price=entry_price,
-            stop_loss=stop_loss,
-            take_profit=take_profit,
-            risk_pips=risk_pips,
-            reward_pips=reward_pips,
-            risk_reward_ratio=actual_rr,
-            position_size=position_size,
-            risk_amount=risk_amount
-        )
-    
-    def validate_risk_params(self, risk_params: RiskParameters) -> Tuple[bool, str]:
+        for lk, usd in level_risks.items():
+            status = role_diagnosis["levels"].get(lk, {}).get("status", "?")
+            v_l    = role_diagnosis["levels"].get(lk, {}).get("v_l", 0.0)
+            if usd > 0:
+                logger.info(f"   {lk}: ${usd:.2f} (V_L={v_l:.4f} | {status})")
+            else:
+                logger.debug(f"   {lk}: Scout 0.01 lotes ({status})")
+
+        return {
+            "level_risks": level_risks,
+            "health":      health_str,
+            "v_global":    v_global,
+            "scout_only":  False,
+            "weights":     weights,
+        }
+
+    def _fallback_allocation(self, equity: float, max_risk_pct: float) -> dict:
+        """Distribución plana de emergencia si el Oráculo no está disponible."""
+        per_level = round(equity * max_risk_pct / 7, 4)
+        return {
+            "level_risks": {f"L{i}": per_level for i in range(1, 8)},
+            "health":      "SALUDABLE",
+            "v_global":    1.0,
+            "scout_only":  False,
+            "weights":     {f"L{i}": round(1/7, 4) for i in range(1, 8)},
+        }
+
+    def check_virtual_stops(self, position, current_bid, current_ask, current_hour):
         """
-        Validate risk parameters meet requirements.
-        
-        Args:
-            risk_params: Risk parameters to validate
-        
-        Returns:
-            Tuple of (is_valid, reason)
+        Protocolo STEALTH AEGIS: Gestión de SL Virtual por Mid-Price
+        para evitar barridos de spread en Rollover.
         """
-        # Check minimum risk-reward ratio
-        if risk_params.risk_reward_ratio < self.min_rr_ratio:
-            return False, f"Risk-reward ratio {risk_params.risk_reward_ratio:.2f} below minimum {self.min_rr_ratio}"
+        mid_price = (current_bid + current_ask) / 2.0
+        current_spread = (current_ask - current_bid)
         
-        # Check position size is reasonable
-        if risk_params.position_size <= 0:
-            return False, "Position size is zero or negative"
+        # Extraer virtual_sl del comentario si no está en el objeto
+        virtual_sl = getattr(position, 'virtual_sl', 0.0)
+        if virtual_sl == 0.0 and hasattr(position, 'comment'):
+            # Formato esperado: ..._VSL1.12345
+            import re
+            match = re.search(r"_VSL([\d.]+)", position.comment)
+            if match:
+                virtual_sl = float(match.group(1))
+
+        if virtual_sl == 0.0: return "SAFE"
         
-        if risk_params.position_size > 10:  # Max 10 lots
-            return False, f"Position size {risk_params.position_size} too large"
+        is_hit = (position.type == 0 and mid_price <= virtual_sl) or \
+                 (position.type == 1 and mid_price >= virtual_sl)
         
-        # Check risk amount
-        max_risk = self.capital * (self.max_risk_percent / 100)
-        if risk_params.risk_amount > max_risk:
-            return False, f"Risk amount ${risk_params.risk_amount:.2f} exceeds maximum ${max_risk:.2f}"
-        
-        return True, "Risk parameters valid"
+        if is_hit:
+            # Si es hora de Rollover (23 o 0) y el spread es alto, HOLD.
+            # Umbral de toxicidad: spread > 3x del spread normal o > 15 pips
+            if current_hour in [23, 0] and current_spread > 0.0015: 
+                logger.warning(f"🛡️ [STEALTH AEGIS] {position.symbol} SL hit by MidPrice but Spread is toxic ({current_spread:.5f}). HOLDING.")
+                return "HOLD"
+            return "CLOSE"
+            
+        return "SAFE"
+
+    def commit_risk(self, risk_pct):
+        self.transit_risk += risk_pct
+
+    def reset_cycle(self):
+        self.transit_risk = 0.0

@@ -70,15 +70,20 @@ class MegaGridV2:
         total_risk=None,
         is_scout=False,
         nem_type="NEM1",
-        reversal_profile=None
+        reversal_profile=None,
+        level_risks_usd=None,  # [v10.0.0] Distribución asimétrica del Omega Core (USD por nivel)
+        account_equity=None    # [v10.0.0] Necesario para convertir USD → % si level_risks_usd está activo
     ):
         """
         Genera pool de niveles con soporte para NEM1/NEM2 y Gravity Well Geometry.
         
         Args:
-            is_scout: If True, only returns 1 level (L1) with minimum risk.
-            nem_type: "NEM1" (original, side=1) o "NEM2" (inverso, side=-1)
+            is_scout:         Si True, solo retorna 1 nivel (L1) con riesgo mínimo.
+            nem_type:         "NEM1" (original, side=1) o "NEM2" (inverso, side=-1)
             reversal_profile: Datos históricos de reversión para Gravity Well.
+            level_risks_usd:  [v10.0.0] Dict {"L1": 12.4, "L7": 47.0, ...} del Omega Core.
+                              Si None, usa la distribución estática legacy.
+            account_equity:   Equity actual (para calcular % a partir de USD).
         """
         pool = []
         
@@ -100,27 +105,40 @@ class MegaGridV2:
         
         for i in range(num_levels):
             rr = self.config["rr_levels"][i]
+            level_key = f"L{i+1}"
             
             if not is_scout:
-                risk_pct = self.config["risk_distribution"][i] * scale_factor
+                # [v10.0.0] OMEGA CORE: Usar distribución asimétrica si está disponible
+                if level_risks_usd is not None and account_equity and account_equity > 0:
+                    usd_for_level = level_risks_usd.get(level_key, 0.0)
+                    if usd_for_level > 0:
+                        risk_pct = usd_for_level / account_equity
+                    else:
+                        # Nivel INFECTADO o en CUARENTENA → lotaje mínimo de biopsia
+                        risk_pct = 0.0001  # ~0.01% → resultará en 0.01 lotes
+                else:
+                    # Comportamiento LEGACY: distribución estática
+                    risk_pct = self.config["risk_distribution"][i] * scale_factor
             
             # Usar offset dinámico del Pozo de Gravedad si está disponible
             offset_atr = offsets[i] if i < len(offsets) else (i * self.config.get("distance_multiplier", 1.0))
             level_entry = entry_price + ((-1 * final_side) * offset_atr * atr)
             
             pool.append({
-                "level": i + 1,
-                "entry": level_entry,
-                "rr": rr,
+                "level":    i + 1,
+                "entry":    level_entry,
+                "rr":       rr,
                 "risk_pct": risk_pct,
-                "sl_mult": self.config["sl_multiplier"],
-                "tag": f"{self.config['comment_prefix']}L{i+1}_{nem_type}_{source_tag}",
-                "side": final_side,
+                "sl_mult":  self.config["sl_multiplier"],
+                "tag":      f"{self.config['comment_prefix']}L{i+1}_{nem_type}_{source_tag}",
+                "side":     final_side,
                 "is_scout": is_scout,
-                "nem_type": nem_type
+                "nem_type": nem_type,
+                "omega_usd": level_risks_usd.get(level_key, 0.0) if level_risks_usd else None,
             })
             
         return pool
+
 
     def calculate_gravity_well_offsets(self, symbol, reversal_profile):
         """

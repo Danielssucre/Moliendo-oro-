@@ -23,6 +23,8 @@ class StatePersistence:
         defaults = {
             "daily_start_balance": 0.0,
             "equity_peak": 0.0,
+            "daily_pnl_history": [], # [v9.1.0] Historial de ΔEquity_24h
+            "basket_peaks_history": [], # [v10.0.0] Historial de picos flotantes máximos por canasta
             "last_reset_date": "",
             "last_reset_week": 0,
             "weekly_start_balance": 0.0,
@@ -33,7 +35,7 @@ class StatePersistence:
             "daily_goal_reached": False,
             "rollover_lock": False,
             "reversal_profile": {}, 
-            "version": "1.6.0"
+            "version": "1.7.0"
         }
         state = db.load_json(self.file_path, default=defaults)
         
@@ -135,6 +137,15 @@ class StatePersistence:
         if self.state.get("last_reset_date") != today_str:
             # Protocolo de Hibernación: Solo resetear si ha pasado la zona de peligro de spread (02:00 AM)
             if now.hour >= 2:
+                # [v9.1.0] Registro Histórico antes del Reset (Para cálculo de μ)
+                old_start = self.state.get("daily_start_balance", 0)
+                if old_start > 0:
+                    daily_pnl = current_balance - old_start
+                    if "daily_pnl_history" not in self.state: self.state["daily_pnl_history"] = []
+                    self.state["daily_pnl_history"].append(round(daily_pnl, 2))
+                    if len(self.state["daily_pnl_history"]) > 30: # Ventana de 1 mes
+                        self.state["daily_pnl_history"] = self.state["daily_pnl_history"][-30:]
+                
                 logger.info(f"⏳ [UTC RESET] Nuevo día: {today_str}. Zona segura alcanzada. Reiniciando objetivo diario.")
                 self.state["daily_goal_reached"] = False
                 self.state["daily_start_balance"] = current_balance
@@ -172,6 +183,22 @@ class StatePersistence:
             self.save()
 
         return self.state
+
+    def calculate_sovereign_target(self, current_equity, k=10, mva_usd=5.0):
+        """
+        [v9.1.0] FRONTERA DE RECUPERACIÓN LIMITADA POR ENTROPÍA
+        DISABLED FOR OMEGA CORE PURITY.
+        """
+        return 999999.0 # High value to avoid triggering early closures
+
+    def get_mu_peak(self, min_samples: int = 3) -> float | None:
+        """
+        [v10.0.0] TECHO NATURAL DE EXPANSIÓN (μ_Peak)
+        DISABLED FOR OMEGA CORE PURITY.
+        Retorna None para evitar cierres prematuros y permitir que las operaciones
+        toquen sus Take Profits naturales.
+        """
+        return None
 
     def update_reversal_profile(self, symbol, atr_dist):
         """[Fase 4] Registra una distancia ATR de reversión exitosa."""

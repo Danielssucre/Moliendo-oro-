@@ -36,8 +36,11 @@ except ImportError:
     persistence_handler = StatePersistence()
     from src.nanobot.volatility_engine import VolatilityEngine
 
+from nanobot.risk_manager import MeritocraticRiskManager
+
 # --- GLOBAL COMPONENTS ---
 vol_engine = None # Initialized in main()
+risk_tribunal = None # Initialized in main()
 class AlphaSignal:
     def __init__(self, symbol, direction, confidence, strategy_tag, edge_type, suggested_rr, regime):
         self.symbol, self.direction, self.confidence = symbol, direction, confidence
@@ -93,8 +96,9 @@ def check_rollover_killswitch(mt5_client, persistence_handler):
         state = persistence_handler.state
         lock_active = state.get("rollover_lock", False)
         
-        # --- [GATILLO 1: LA LIQUIDACIÓN (23:55)] ---
-        if hour == 23 and minute >= 55:
+        # --- [GATILLO 1: LA LIQUIDACIÓN (23:55) DISABLED] ---
+        # Omega Core requiere que cada trade toque su TP/SL natural.
+        if False: # hour == 23 and minute >= 55:
             if not lock_active:
                 logger.warning(f"⚠️ [ROLLOVER KILL-SWITCH] Hora servidor: {server_time.strftime('%H:%M:%S')}. Iniciando Búnker.")
                 positions = mt5_client.positions_get()
@@ -179,7 +183,7 @@ class MegaGridTracker:
     def __init__(self, mt5_client, logger):
         self.client, self.logger = mt5_client, logger
         
-    def execute_signal(self, signal):
+    def execute_signal(self, signal, risk_pct=None):
         from nanobot.strategies.mega_grid_v2 import MegaGridV2
         global RISK_PER_TRADE, current_capital, ASSET_MAP
         
@@ -232,18 +236,22 @@ class MegaGridTracker:
         # [Fase 4] Inyección de Inteligencia de Reversión (Gravity Well)
         reversal_data = persistence_handler.state.get("reversal_profile", {})
         
+        effective_risk = risk_pct if risk_pct is not None else RISK_PER_TRADE
+
+        # [v10.0.0] OMEGA CORE: Obtener distribución asimétrica por nivel si está disponible
+        level_risks_usd = getattr(signal, '_omega_level_risks', None)
+        acc_info = self.client.account_info()
+        account_equity = float(acc_info.equity) if acc_info else None
+
         levels = strategy.generate_pool(
             symbol=symbol_mt5, entry_price=entry_price, atr=atr_val,
-            direction=final_side, total_risk=RISK_PER_TRADE, 
+            direction=final_side, total_risk=effective_risk, 
             is_scout=is_scout_mode, nem_type=nem_type,
-            reversal_profile=reversal_data
+            reversal_profile=reversal_data,
+            level_risks_usd=level_risks_usd,   # [v10.0.0] Omega Core
+            account_equity=account_equity       # [v10.0.0] Para conversión USD→%
         )
 
-        # 4. [SCOUT FIRST] DESPACHO DEL ESPÍA CON BALÍSTICA HEREDADA (L1 DNA)
-        if levels:
-            symbol_info = self.client.symbol_info(symbol_mt5)
-            point = symbol_info.point if symbol_info else 0.00001
-            
         # 4. [SCOUT FIRST] DESPACHO DEL ESPÍA CON BALÍSTICA HEREDADA (L1 DNA)
         if levels:
             symbol_info = self.client.symbol_info(symbol_mt5)
@@ -273,7 +281,9 @@ class MegaGridTracker:
                 
             # [v6.3.2] BLACK-BOX RISK ADN: Inyectar riesgo original en puntos para el Harvester
             risk_points = int(sl_dist / point) if point > 0 else 0
-            spy_comment = f"L1_SCOUT_{pair}_{spy_role}_R{risk_points}"
+            # [v10.2] MT5 RPyC LIMIT: max 20 chars total including VSL
+            _role_s = "N1" if "NEM1" in spy_role else "N2"
+            spy_comment = f"S_L1_{_role_s}" # 7 chars
             
             self.logger.info(f"🕵️ [SCOUT FIRST] Desplegando sonda HEREDERA ({spy_role}): {pair} {spy_dir} | SL_Pts: {risk_points}")
             execute_mt5_trade(symbol_mt5, spy_dir, spy_entry, spy_sl, spy_tp, 0.01, comment=spy_comment)
@@ -310,10 +320,12 @@ class MegaGridTracker:
             # de su red de mitigación para poder comparar R-Multiples puros contra el Scout del bando contrario.
             if level['level'] == 1 and not is_scout_mode:
                 risk_points = int(sl_dist / point) if point > 0 else 0
-                comment = f"L1_HEAVY_{pair}_{nem_type}_R{risk_points}"
+                _role_s = "N1" if "NEM1" in nem_type else "N2"
+                comment = f"H_L1_{_role_s}" # 7 chars
             else:
-                tag_clean = "".join(c for c in str(signal.strategy_tag) if ord(c) < 128)[:10]
-                comment = f"{tag_clean}_{nem_type}_{'SCOU' if is_scout_mode else 'HEAV'}_L{level['level']}"
+                _role_s = "N1" if "NEM1" in nem_type else "N2"
+                _sh = 'S' if is_scout_mode else 'H'
+                comment = f"{_sh}_L{level['level']}_{_role_s}" # 7 chars
             
             trade_dir = "BUY" if nem_side == 1 else "SELL"
             execute_mt5_trade(symbol_mt5, trade_dir, level['entry'], sl_price, tp_price, lot_size, comment=comment)
@@ -377,36 +389,74 @@ def affinity_harvester_daemon(mt5_client, logger):
                     comment = pos_to_comment.get(deal.position_id, getattr(deal, 'comment', ""))
                     ticket = str(deal.ticket)
                     
-                    is_scout = "L1_SCOUT" in comment
-                    is_heavy = "L1_HEAVY" in comment
-                    is_grid_l1 = "_L1_" in comment
+                    # [v10.2] GRANULAR HARVESTER: Detectar cualquier nivel L1-L7
+                    import re as _re
+                    # Soporta formato legacy (L1_SCOUT_, _L1_) y ultra-short (S_L1_N1, H_L2_N2)
+                    level_match = _re.search(r'_L(\d)(?:_|$)', comment)
+                    # Scout: formato legacy 'L1_SCOUT' o ultra-short 'S_' prefix
+                    is_scout = ("L1_SCOUT" in comment) or comment.startswith("S_")
+                    # Heavy grid: tiene nivel _Ln_ y no es scout
+                    is_grid_level = level_match is not None
                     
-                    if not (is_scout or is_heavy or is_grid_l1): continue
+                    if not (is_scout or is_grid_level): continue
                     
                     pair = deal.symbol
                     if pair not in map_data: map_data[pair] = {}
                     
-                    # Determinar Rol
-                    role = "NEM1"
-                    if "_NEM2_" in comment: role = "NEM2"
-                    elif "_NEM1_" in comment: role = "NEM1"
+                    # Determinar Rol (soporta legacy y ultra-short _N1/_N2)
+                    role = "NEM1"  # default
+                    if "_NEM2" in comment or "_N2" in comment: role = "NEM2"
+                    elif "_NEM1" in comment or "_N1" in comment: role = "NEM1"
+                    
+                    # [v10.0.0] Extraer nivel granular (L1..L7)
+                    level_num = int(level_match.group(1)) if level_match else 1
+                    level_key = f"L{level_num}"
                     
                     if role not in map_data[pair]: map_data[pair][role] = {"n": 0, "sum_r": 0.0, "tickets": []}
                     
                     if ticket not in map_data[pair][role]["tickets"]:
                         total_profit = deal.profit + deal.swap + deal.commission
                         
-                        # Proxy R-Multiple: (+1 Win, -1 Loss)
-                        # Nota: Al ser ambas L1, tienen el mismo RR configurado asimétricamente, 
-                        # el valor +1/-1 puro es matemáticamente proporcional para la métrica del Harvester Bayesiano.
+                        # Proxy R-Multiple: (+1 Win, -1 Loss) para compatibilidad legacy
                         r_realized = 1.0 if total_profit > 0 else -1.0 
                         
                         map_data[pair][role]["n"] += 1
                         map_data[pair][role]["sum_r"] += r_realized
                         map_data[pair][role]["tickets"].append(ticket)
+                        
+                        # [v10.0.0] MEMORIA GRANULAR POR NIVEL (L1-L7)
+                        # Guardamos el beneficio REAL en USD para calcular WR y PF clínico
+                        if "levels" not in map_data[pair][role]:
+                            map_data[pair][role]["levels"] = {}
+                        if level_key not in map_data[pair][role]["levels"]:
+                            map_data[pair][role]["levels"][level_key] = {"n": 0, "wins": 0, "profit_history": [], "tickets": []}
+                        
+                        level_data = map_data[pair][role]["levels"][level_key]
+                        if ticket not in level_data["tickets"]:
+                            level_data["n"] += 1
+                            if total_profit > 0:
+                                level_data["wins"] += 1
+                            level_data["profit_history"].append(round(total_profit, 4))
+                            level_data["tickets"].append(ticket)
+                            # Ventana deslizante de 50 operaciones por nivel
+                            if len(level_data["profit_history"]) > 50:
+                                level_data["profit_history"] = level_data["profit_history"][-50:]
+                            if len(level_data["tickets"]) > 50:
+                                level_data["tickets"] = level_data["tickets"][-50:]
+                        
+                        # [v9.0.0] Intelligence Expansion: Tensor 3D (Hour of Day)
+                        dt = datetime.fromtimestamp(deal.time)
+                        hour_key = str(dt.hour)
+                        if "hourly" not in map_data[pair][role]:
+                            map_data[pair][role]["hourly"] = {str(h): {"n": 0, "sum_r": 0.0} for h in range(24)}
+                        
+                        map_data[pair][role]["hourly"][hour_key]["n"] += 1
+                        map_data[pair][role]["hourly"][hour_key]["sum_r"] += r_realized
+
                         if len(map_data[pair][role]["tickets"]) > 200:
                             map_data[pair][role]["tickets"] = map_data[pair][role]["tickets"][-200:]
                         changes = True
+                        logger.debug(f"🔬 [GRANULAR HARVEST] {pair}/{role}/{level_key} | Profit: ${total_profit:.4f} | Total muestras: {level_data['n']}")
                 
                 if changes:
                     # [v6.4.0] AUTO-CATALOGING LOGIC
@@ -486,20 +536,20 @@ except ImportError:
         print("⚠️ Kelly Module missing.")
 
 try:
-    from nanobot.ml.rl_trailing import RLTrailingManager
-    RL_AGENT_ENABLED = True
+    # [v10.2] RL Trailing DISABLED: Omega Core requiere pureza estadística (esperar a TP/SL)
+    RL_AGENT_ENABLED = False
+    class RLTrailingManager: pass  # Stub
 except Exception as e:
     RL_AGENT_ENABLED = False
-    print(f"⚠️ RL Trailing disabled (torch not found): {e}")
     class RLTrailingManager: pass  # Stub
 
 try:
-    from nanobot.ml.mfe_sniper import MFESniperManager
-    SNIPER_ENABLED = True
+    # [v10.2] MFE Sniper DISABLED: Omega Core requiere pureza estadística (esperar a TP/SL)
+    SNIPER_ENABLED = False
+    class MFESniperManager: pass # Stub
 except Exception as e:
     SNIPER_ENABLED = False
-    print(f"⚠️ MFE Sniper disabled (torch not found): {e}")
-    class MFESniperManager: pass  # Stub
+    class MFESniperManager: pass # Stub
 
 try:
     from nanobot.ml.risk_oracle import AsymmetricRiskOracle
@@ -997,132 +1047,16 @@ class MT5ConnectionManager:
             MT5_CONNECTED = False
             return self.connect(max_retries=3)
 
+                    
 def check_basket_profit_lock(mt5_client, mt5_manager, bot):
-    """Checks if the combined floating profit exceeds the threshold and closes all if enabled."""
-    global LAST_BASKET_ENABLED, LAST_BASKET_THRESHOLD, INITIAL_CAPITAL, vol_engine, CURRENT_BASKET_PEAK, CURRENT_BASKET_FLOOR
-    
-    config_path = "config/basket_config.json"
-    if not os.path.exists(config_path):
-        return
-        
-    try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-            
-        enabled = config.get("enabled", False)
-        
-        # --- [v6.8.6] DYNAMIC TRUST RATCHET ---
-        current_tier = persistence_handler.state.get("trust_tier", 1)
-        threshold_pct = persistence_handler.get_trust_threshold_pct()
-        start_balance = persistence_handler.state.get("daily_start_balance", INITIAL_CAPITAL)
-        
-        target_usd = start_balance * (threshold_pct / 100.0)
-        
-        # --- CHANGE DETECTION LOGGING ---
-        if enabled != LAST_BASKET_ENABLED or threshold_pct != LAST_BASKET_THRESHOLD:
-            status_str = "ON" if enabled else "OFF"
-            logger.info(f"🔒 [BASKET LOCK] Tier {current_tier} {status_str}: Buscando {threshold_pct}% (${target_usd:,.2f})")
-            LAST_BASKET_ENABLED = enabled
-            LAST_BASKET_THRESHOLD = threshold_pct
-            
-        if not enabled:
-            return
-        
-        acc = mt5_client.account_info()
-        if acc:
-            floating_pnl = float(acc.profit)
-            
-            # --- [v8.0.0] CAZADOR DINÁMICO (Anclado a Volatilidad) ---
-            active_symbols = list(set([p.symbol for p in positions_proxy])) if 'positions_proxy' in locals() else []
-            if not active_symbols:
-                positions_tmp = mt5_client.positions_get()
-                active_symbols = list(set([p.symbol for p in positions_tmp])) if positions_tmp else []
-            
-            vol_factor = vol_engine.get_account_volatility_factor(active_symbols) if vol_engine else 1.0
-            
-            # --- PEAK TRACKING ---
-            if floating_pnl > CURRENT_BASKET_PEAK:
-                CURRENT_BASKET_PEAK = floating_pnl
-                
-            # --- DYNAMIC FLOOR LOGIC (Trailing Safety) ---
-            # La distancia del trailing ahora es dinámica: base 0.25% * vol_factor
-            base_dist_usd = start_balance * 0.0025 
-            dynamic_dist_usd = base_dist_usd * vol_factor
-            
-            guard_trigger = target_usd * 0.70 # Activamos el trailing al 70% del objetivo
-            
-            if CURRENT_BASKET_PEAK >= guard_trigger:
-                new_floor = CURRENT_BASKET_PEAK - dynamic_dist_usd
-                if new_floor > CURRENT_BASKET_FLOOR:
-                    if int(time.time()) % 60 < 5: # Log cada minuto aprox
-                        logger.info(f"🏹 [HUNTER] Peak ${CURRENT_BASKET_PEAK:.2f}. Trailing Floor elevado a ${new_floor:.2f} (Vol Factor: {vol_factor:.2f}x)")
-                    CURRENT_BASKET_FLOOR = new_floor
-            
-            # --- TRIGGER: TARGET OR FLOOR ---
-            force_close = False
-            close_reason = ""
-            
-            if floating_pnl >= target_usd:
-                force_close = True
-                close_reason = f"Trust Tier Level Objective Reached (${floating_pnl:.2f} >= ${target_usd:.2f} [{threshold_pct}%])"
-            elif CURRENT_BASKET_FLOOR > 0 and floating_pnl < CURRENT_BASKET_FLOOR:
-                force_close = True
-                close_reason = f"Trust Trailing Safety Hit (${floating_pnl:.2f} < ${CURRENT_BASKET_FLOOR:.2f})"
-                
-            if force_close:
-                logger.warning(f"🎯 [BASKET LOCK] {close_reason}. Securing gains for the day.")
-                
-                # --- [Fase 4: SHADOW HARVEST] ---
-                # Capturamos la anatomía de la canasta antes de liquidarla
-                positions_for_harvest = mt5_client.positions_get()
-                if positions_for_harvest:
-                    harvest_reversal_data(positions_for_harvest, mt5_client, persistence_handler)
-                
-                # EXECUTE: Close all trades
-                mt5_manager.close_all_positions_atomic()
-                
-                # --- [v6.9.0] POST-LIQUIDATION VERIFICATION (MESA LIMPIA) ---
-                # Recalculamos el PnL con el balance real tras cerrar todo.
-                acc_final = mt5_client.account_info()
-                if acc_final:
-                    final_pnl = acc_final.balance - INITIAL_CAPITAL
-                    is_clean = mt5_client.positions_total() == 0
-                    
-                    if is_clean:
-                        logger.info(f"🏆 [TARGET REACHED] Mesa Limpia. PnL Final: ${final_pnl:,.2f}")
-                        persistence_handler.state["daily_goal_reached"] = True
-                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=True)
-                    else:
-                        logger.error("⚠️ [CLEAN DESK FAIL] Quedaron posiciones abiertas tras liquidación. Promoción denegada.")
-                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=False)
-                    
-                    if bot and hasattr(bot, 'send_basket_report'):
-                        bot.send_basket_report(
-                            reason=close_reason,
-                            profit=final_pnl,
-                            initial_capital=INITIAL_CAPITAL
-                        )
-                else:
-                    logger.error("❌ [FATAL] No se pudo obtener info de cuenta tras liquidación. Abortando evaluación de méritos.")
+    """
+    [v10.2] BASKET LOCK DISABLED: Omega Core requiere que cada trade toque su TP/SL natural.
+    El mapa de afinidad depende de la resolución binaria pura del nivel.
+    """
+    return
 
-                
-                # --- RESET BASKET STATE ---
-                CURRENT_BASKET_PEAK = 0.0
-                CURRENT_BASKET_FLOOR = 0.0
+# --- [v10.0.0] MEMORIA DE PICOS Y ESTADÍSTICAS ---
 
-                
-                # --- COOLDOWN FIX (0.2.0) ---
-                global LAST_BASKET_RELEASE_TIME
-                time.sleep(5) # Let MT5 sync the closure
-                LAST_BASKET_RELEASE_TIME = time.time()
-                
-                # Log trigger time back to config
-                config["last_trigger"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                with open(config_path, 'w') as f:
-                    json.dump(config, f, indent=4)
-                    
-    except Exception as e:
-        logger.error(f"Error in Basket Profit Lock: {e}")
 
 def get_mt5_data(symbol, timeframe=None, bars=1000):
     if timeframe is None:
@@ -1165,34 +1099,29 @@ class MarketGuardian:
     def check_and_protect(self):
         """
         Main logic for Iron Shield v2.
-        Called in the main loop to evaluate if it's Friday afternoon.
+        Sincronizado con el Reloj Maestro del Bróker (Server Time).
         """
         if not self.mt5: return
         
-        est_now = self.get_est_time()
-        is_friday = est_now.weekday() == 4
+        # 1. LATIDO DE REFERENCIA: Sincronizar con el tiempo real del bróker
+        tick = self.mt5.symbol_info_tick("EURUSD")
+        if not tick: return
+        
+        server_now = datetime.fromtimestamp(tick.time)
+        is_friday = server_now.weekday() == 4
         
         if not is_friday: return
         
-        # 3:45 PM EST (15:45) is the start of the Smart Close window
-        if (est_now.hour == 15 and est_now.minute >= 45) or est_now.hour == 16:
-            positions = self.mt5.positions_get()
-            if not positions: return
-            
-            for p in positions:
-                if self.is_crypto(p.symbol): continue
-                
-                profit = p.profit
-                
-                # SMART CLOSE: If in profit after 4:00 PM, close immediately to secure it.
-                if profit > 0:
-                    logger.info(f"🛡️ IRON SHIELD v2 (SMART): Closing {p.symbol} in profit (${profit:.2f}) before weekend.")
-                    self._close_position(p)
-                
-                # HARD LIMIT: If it's after 3:55 PM (5 mins before close), close regardless of P/L.
-                elif (est_now.hour == 15 and est_now.minute >= 55) or est_now.hour == 16:
-                    logger.warning(f"🛡️ IRON SHIELD v2 (HARD): Forced closure of {p.symbol} (${profit:.2f}) to prevent weekend GAP.")
-                    self._close_position(p)
+        # 2. VENTANA DE LIQUIDACIÓN (Hora Servidor)
+        # La mayoría de brókers cierran el viernes a las 23:59:59 (GMT+2/3)
+        # 23:30 -> Smart Close (Asegurar ganancias)
+        # 23:45 -> Hard Purge (Cierre total forzado)
+        
+        positions = self.mt5.positions_get()
+        if not positions: return
+        
+        # IRON SHIELD DISABLED: Omega Core requiere pureza estadística.
+        return
 
     def _close_position(self, p):
         """Helper to execute the close order."""
@@ -1898,9 +1827,9 @@ def normalize_symbol_name(raw_name):
     return name
 
 
-def execute_mt5_trade(pair, final_direction, price, sl, tp, volume, comment="Nanobot HIVE v6.8"):
+def execute_mt5_trade(pair, final_direction, price, sl, tp, volume, comment="Nanobot HIVE v6.8", use_virtual_sl=True):
     """
-    [v6.8.3] NATIVE MT5 EXECUTION ENGINE
+    [v9.0.0] NATIVE MT5 EXECUTION ENGINE + STEALTH AEGIS
     - final_direction: 1 or "BUY", -1 or "SELL"
     """
     if not MT5_CONNECTED: return
@@ -1922,6 +1851,13 @@ def execute_mt5_trade(pair, final_direction, price, sl, tp, volume, comment="Nan
         logger.error(f"❌ Symbol Info/Tick Failed: {symbol_mt5}")
         return
         
+    # Guardar el SL real para el Escudo Sigiloso
+    real_sl = sl
+    if use_virtual_sl:
+        sl = 0.0 # Ocultar el riesgo al bróker
+        if real_sl > 0:
+            comment += f"_VSL{real_sl:.5f}"
+
     pip_val = info.point 
     pips_in_point = 10 if ("USD" in pair and "JPY" not in pair and "XAU" not in pair and "BTC" not in pair) else 1
     buffer_val = PENDING_ORDER_BUFFER_PIPS * info.point * pips_in_point
@@ -2242,11 +2178,13 @@ def manage_active_trades(bot_brain):
     symbol_info_cache = {}
     
     current_time = time.time()
+    curr_hour = datetime.now().hour
     active_summary = []
     
     for p in positions:
         try:
             symbol = p.symbol
+            
             # Get Symbol Context (ATR/Digits) - CACHED
             if symbol not in symbol_info_cache:
                 info = mt5_client.symbol_info(symbol)
@@ -2265,136 +2203,16 @@ def manage_active_trades(bot_brain):
 
             if rates is not None and len(rates) > 14:
                 df = pd.DataFrame(rates)
-                df['ema_9'] = df['close'].ewm(span=9, adjust=False).mean()
-                tr = pd.concat([df['high']-df['low'], abs(df['high']-df['close'].shift(1)), abs(df['low']-df['close'].shift(1))], axis=1).max(axis=1)
-                df['atr'] = tr.rolling(14).mean()
-                atr = df['atr'].iloc[-1]
             else:
-                atr = 0.002 # Fallback
                 df = pd.DataFrame()
             
-            # --- [v8.0.0] ESCUDO ASIMÉTRICO (Individual BE @ 1.5 ATR) ---
-            if vol_engine:
-                atr_pips = vol_engine.get_symbol_atr_pips(symbol)
-                profit_pips = (p.price_current - p.price_open) / info.point if p.type == 0 else (p.price_open - p.price_current) / info.point
-                
-                if profit_pips > (1.5 * atr_pips):
-                    be_offset = max(10, info.trade_stops_level + 5)
-                    be_price = p.price_open + (be_offset * info.point) if p.type == 0 else p.price_open - (be_offset * info.point)
-                    
-                    sl_at_be = (p.type == 0 and p.sl >= be_price) or (p.type == 1 and p.sl <= be_price and p.sl > 0)
-                    if not sl_at_be:
-                        logger.warning(f"🛡️ [ASYM SHIELD] {symbol} #{p.ticket} profit ({profit_pips:.1f}) > 1.5 ATR ({1.5*atr_pips:.1f}). Moviendo SL a BE.")
-                        sl_request = {
-                            "action": int(mt5_client.TRADE_ACTION_SLTP),
-                            "symbol": str(symbol),
-                            "sl": float(be_price),
-                            "tp": float(p.tp),
-                            "position": int(p.ticket)
-                        }
-                        mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
-
-            # 🎯 DANIEL'S PARTIAL EXIT (1.3R): 50% Close + Move to BE
-            entry_p = p.price_open
-            tp_p = p.tp
+            # --- [v10.2] ACTIVE POSITION MANAGEMENT DISABLED ---
+            # Omega Core requiere que cada trade toque su TP/SL natural para evitar contaminar el Mapa de Calor.
+            # No se permiten Breakevens, Cierres Parciales, Trailing Stops ni Virtual SLs.
+            pass
             
-            # Calculate Initial Risk with BATCHED deals
-            initial_risk_pips = get_initial_risk_pips(p.ticket, symbol, entry_p, info.point, pre_fetched_deals=all_deals)
-            
-            if not initial_risk_pips:
-                tp_dist_pips = abs(tp_p - entry_p) / info.point if tp_p > 0 else (p.price_current * 0.003 / info.point)
-                initial_risk_pips = tp_dist_pips / 1.5
-                
-            if initial_risk_pips < 1.0: initial_risk_pips = 10.0
-            
-            current_pips = (p.price_current - entry_p) / info.point
-            r_multiple = current_pips / initial_risk_pips if p.type == 0 else (-current_pips / initial_risk_pips)
-            
-            MAX_TRADE_HOURS = 96.0 if symbol == "BTCUSD" else 72.0
-            MIN_R_TO_SKIP_BE = 0.5
             duration_hours = (datetime.now() - datetime.fromtimestamp(p.time)).total_seconds() / 3600
             
-            if duration_hours > MAX_TRADE_HOURS and r_multiple < MIN_R_TO_SKIP_BE:
-                be_offset_points = max(10, info.trade_stops_level + 5)
-                be_price = entry_p + (be_offset_points * info.point) if p.type == 0 else entry_p - (be_offset_points * info.point)
-                sl_already_at_be = (p.type == 0 and p.sl >= be_price) or (p.type == 1 and p.sl <= be_price and p.sl > 0)
-
-                if not sl_already_at_be:
-                    logger.warning(f"⏰ TIEMPO MAX ({duration_hours:.1f}h): {symbol} #{p.ticket} no ha llegado a 0.5R ({r_multiple:.2f}R). Moviendo SL a BE.")
-                    sl_request = {
-                        "action": int(mt5_client.TRADE_ACTION_SLTP),
-                        "symbol": str(symbol),
-                        "sl": float(be_price),
-                        "tp": float(p.tp),
-                        "position": int(p.ticket)
-                    }
-                    mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
-            
-            # Partial Exit check
-            is_partialed = "PARTIAL" in p.comment or "MFE" in p.comment or "SNIPER" in p.comment
-            if hasattr(p, 'volume_initial') and p.volume < p.volume_initial:
-                is_partialed = True
-
-            if SNIPER_ENABLED and sniper_manager and not is_partialed:
-                action = sniper_manager.process_position(p, info, df, mt5_client=mt5_client)
-                if action == "PARTIAL" or r_multiple >= 1.5:
-                    reason = "AI SNIPER" if action == "PARTIAL" else "SAFETY 1.3R"
-                    print(f"🎯 PARTIAL EXIT TRIGGERED ({reason}): Closing 50% of {symbol} (#{p.ticket}).")
-                    partial_vol = p.volume / 2.0
-                    if info.volume_step > 0:
-                        partial_vol = round(partial_vol / info.volume_step) * info.volume_step
-                    if partial_vol < info.volume_min: partial_vol = p.volume
-                    partial_vol = round(partial_vol, 2)
-                    
-                    tick = mt5_client.symbol_info_tick(symbol)
-                    close_request = {
-                        "action": int(mt5_client.TRADE_ACTION_DEAL),
-                        "symbol": str(symbol),
-                        "volume": float(partial_vol),
-                        "type": int(mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY),
-                        "position": int(p.ticket),
-                        "price": float(tick.bid if p.type == 0 else tick.ask),
-                        "comment": "MFE",
-                        "type_filling": int(get_filling_mode(info)),
-                    }
-                    mt5_client.eval(f"mt5.order_send({repr(close_request)})")
-                    
-                    be_offset = max(10, info.trade_stops_level + 5)
-                    new_sl = entry_p + (be_offset * info.point) if p.type == 0 else entry_p - (be_offset * info.point)
-                    sl_request = {
-                        "action": int(mt5_client.TRADE_ACTION_SLTP),
-                        "symbol": str(symbol),
-                        "sl": float(new_sl),
-                        "tp": float(p.tp),
-                        "position": int(p.ticket)
-                    }
-                    mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
-
-            # Kaido Trailing
-            if "KAIDO" in p.comment:
-                new_target_sl = None
-                if r_multiple >= 3.0:
-                    new_target_sl = entry_p + (initial_risk_pips * 2.0 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 2.0 * info.point)
-                elif r_multiple >= 2.0:
-                    new_target_sl = entry_p + (initial_risk_pips * 1.0 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 1.0 * info.point)
-                elif r_multiple >= 1.2:
-                    new_target_sl = entry_p + (initial_risk_pips * 0.5 * info.point) if p.type == 0 else entry_p - (initial_risk_pips * 0.5 * info.point)
-                elif r_multiple >= 0.6:
-                    be_offset = max(10, info.trade_stops_level + 5)
-                    new_target_sl = entry_p + (be_offset * info.point) if p.type == 0 else entry_p - (be_offset * info.point)
-                
-                if new_target_sl:
-                    should_move = (p.type == 0 and new_target_sl > p.sl) or (p.type == 1 and (new_target_sl < p.sl or p.sl == 0))
-                    if should_move:
-                        sl_request = {
-                            "action": int(mt5_client.TRADE_ACTION_SLTP),
-                            "symbol": str(symbol),
-                            "sl": float(new_target_sl),
-                            "tp": float(p.tp),
-                            "position": int(p.ticket)
-                        }
-                        mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
-
             active_summary.append({
                 'ticket': int(p.ticket),
                 'symbol': symbol,
@@ -2402,61 +2220,13 @@ def manage_active_trades(bot_brain):
                 'profit_pips': float(p.profit),
                 'duration_hours': duration_hours
             })
-            
-            # RL Infinite Runner
-            if RL_AGENT_ENABLED and rl_manager and is_partialed:
-                if 'df' in locals() and not df.empty:
-                    action_rl = rl_manager.process_position(p, info, df, mt5_client=mt5_client)
-                    if action_rl == "MOVE":
-                        new_sl = p.sl + (initial_risk_pips * 0.3 * info.point) if p.type == 0 else p.sl - (initial_risk_pips * 0.3 * info.point)
-                        sl_request = {
-                            "action": int(mt5_client.TRADE_ACTION_SLTP),
-                            "symbol": str(symbol),
-                            "sl": float(new_sl),
-                            "tp": float(p.tp),
-                            "position": int(p.ticket)
-                        }
-                        mt5_client.eval(f"mt5.order_send({repr(sl_request)})")
-                    elif action_rl == "CLOSE":
-                        tick = mt5_client.symbol_info_tick(symbol)
-                        close_req = {
-                            "action": int(mt5_client.TRADE_ACTION_DEAL),
-                            "symbol": str(symbol),
-                            "volume": float(p.volume),
-                            "type": int(mt5_client.ORDER_TYPE_SELL if p.type == 0 else mt5_client.ORDER_TYPE_BUY),
-                            "position": int(p.ticket),
-                            "price": float(tick.bid if p.type == 0 else tick.ask),
-                            "comment": "RL AGENT CLOSE",
-                            "type_filling": int(get_filling_mode(info)),
-                        }
-                        mt5_client.eval(f"mt5.order_send({repr(close_req)})")
+
         except Exception as e:
             logger.error(f"Error managing position {p.symbol if 'p' in locals() else 'unknown'}: {e}")
 
-    # 🧠 AI Audit (Every 30 minutes)
+    # 🧠 AI Audit (Informational Only)
     if bot_brain and (current_time - last_trade_audit > 1800):
         last_trade_audit = current_time
-        print("🧠 AI GUARDIAN: Auditing active positions...")
-        recommendations = bot_brain.audit_trade_health(active_summary)
-        for rec in recommendations:
-            ticket_audit = int(rec.get('ticket', 0))
-            action_audit = rec.get('action')
-            reason_audit = rec.get('reason')
-            if action_audit == "CLOSE" and ticket_audit > 0:
-                pos = next((p for p in positions if p.ticket == ticket_audit), None)
-                if pos:
-                    tick = mt5_client.symbol_info_tick(pos.symbol)
-                    request_audit = {
-                        "action": int(mt5_client.TRADE_ACTION_DEAL),
-                        "symbol": str(pos.symbol),
-                        "volume": float(pos.volume),
-                        "type": int(mt5_client.ORDER_TYPE_SELL if pos.type == mt5_client.ORDER_TYPE_BUY else mt5_client.ORDER_TYPE_BUY),
-                        "position": int(pos.ticket),
-                        "price": float(tick.bid if pos.type == mt5_client.ORDER_TYPE_BUY else tick.ask),
-                        "comment": "AI GUARDIAN CLOSE",
-                        "type_filling": int(get_filling_mode(mt5_client.symbol_info(pos.symbol))),
-                    }
-                    mt5_client.eval(f"mt5.order_send({repr(request_audit)})")
 
 def main():
     print("DEBUG: L1545 - ENTERING MAIN")
@@ -2504,6 +2274,10 @@ def main():
     print("📡 INITIALIZING SILICON MT5 BRIDGE (AXI CHALLENGE)...")
     init_mt5()
     print("✅ SILICON MT5 BRIDGE INITIALIZED.")
+
+    global vol_engine, risk_tribunal
+    vol_engine = VolatilityEngine(mt5_client)
+    risk_tribunal = MeritocraticRiskManager(mt5_client, global_cap=0.025)
 
     # Initialize Risk Oracle (Quantum RL-Ready)
     risk_oracle = None
@@ -2667,6 +2441,13 @@ def main():
             current_capital = balance # Live monitoring
             
             real_pnl = equity - INITIAL_CAPITAL
+            
+            # --- [v9.1.0] SOVEREIGNTY ORACLE ---
+            sovereign_target = persistence_handler.calculate_sovereign_target(equity)
+            is_stasis = sovereign_target == -1.0
+            persistence_handler.state["sovereign_target_cache"] = sovereign_target
+            persistence_handler.save()
+            
             kill_pnl = get_rollover_kill_pnl(mt5_client)
             
             # Adjusted PnL ignores ROLLOVER_KILL losses for the Ratchet limit
@@ -2692,37 +2473,9 @@ def main():
             
             guardian.update(equity)
 
-            # --- [V3.7 KAIZEN LOCK: ATOMIC PURGE] ---
-            profit_floor = guardian.get_profit_lock_floor(equity)
-            if profit_floor and equity < profit_floor and active_pos_count > 0:
-                logger.warning(f"🚨 [KAIZEN LOCK] Equity (${equity:,.2f}) hit dynamic floor (${profit_floor:,.2f}). Saving Profits!")
-                bot.send_message(f"🚨 *TRINQUETE DE BENEFICIO*: El Equity ha tocado el piso de protección. Cerrando todo para asegurar ganancias.")
-                
-                # PROTOCOLO V3.7: PURGA ATÓMICA
-                mt5_manager.close_all_positions_atomic()
-                
-                # --- [v6.9.0] POST-LIQUIDATION VERIFICATION (MESA LIMPIA) ---
-                # Recalculamos el PnL con el balance real tras cerrar todo.
-                acc_final = mt5_client.account_info()
-                if acc_final:
-                    final_pnl = acc_final.balance - INITIAL_CAPITAL
-                    is_clean = mt5_client.positions_total() == 0
-                    
-                    if is_clean:
-                        logger.info(f"🏆 [KAIZEN SUCCESS] Mesa Limpia. PnL Final: ${final_pnl:,.2f}")
-                        persistence_handler.state["daily_goal_reached"] = True
-                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=True)
-                    else:
-                        logger.error("⚠️ [CLEAN DESK FAIL] Quedaron posiciones abiertas tras liquidación. Promoción denegada.")
-                        persistence_handler.evaluate_performance(final_pnl, is_basket_win=False)
-                else:
-                    logger.error("❌ [FATAL] No se pudo obtener info de cuenta tras liquidación. Abortando evaluación de méritos.")
-
-                
-                # ASYNCHRONOUS COOLDOWN: 4 Horas
-                GLOBAL_RESUME_TIME = time.time() + 14400 
-                logger.warning(f"⏳ [COOLDOWN] System Halted. Resuming at {datetime.fromtimestamp(GLOBAL_RESUME_TIME).strftime('%H:%M:%S')}")
-                continue
+            # --- [V3.7 KAIZEN LOCK DISABLED] ---
+            # Omega Core no permite cierres dinámicos por equity floor.
+            pass
 
 
                 
@@ -2817,46 +2570,20 @@ def main():
                     logger.error(f"Pulse/Telemetry Error: {e}")
 
             # --- [UNIVERSAL GUARDIAN v4.1: ACTIVE PROTECTIONS - EVERY ITERATION] ---
-            # 1. Dynamic Profit Lock (Trinquete Escalonado)
+            # 1. Dynamic Profit Lock (Trinquete Escalonado) - DISABLED FOR PURITY
             profit_floor = guardian.get_profit_lock_floor(equity)
             if profit_floor and equity < profit_floor and active_pos_count > 0:
-                logger.warning(f"🚨 [KAIZEN LOCK] Equity (${equity:,.2f}) hit dynamic floor (${profit_floor:,.2f}). Saving Profits!")
-                bot.send_message(f"🚨 *TRINQUETE DE BENEFICIO*: El Equity ha tocado el piso de protección escalonado. Cerrando todo para asegurar ganancias.")
-                mt5_manager.close_all_positions()
-                time.sleep(3600 * 4) # Cool-off 4h
-                continue
+                pass # Disabled to allow individual TP/SL hits
 
-            # 2. Hard Fuse Safety (Daily Limit)
-            # EXTREME SURVIVAL: Disable Hard Fuse for accounts < $100 to give them "one last breath"
+            # 2. Hard Fuse Safety (Daily Limit) - DISABLED FOR PURITY
+            # Disabled to allow individual TP/SL hits
             if INITIAL_CAPITAL >= 100:
-                hard_limit_pct = (guardian.daily_limit_pct * 0.75)
-                hard_limit = INITIAL_CAPITAL * (1 - (hard_limit_pct / 100))
-                
-                if equity < hard_limit:
-                    sleep_duration = 3600 * 24 
-                    logger.error(f"💀 [HARD FUSE] Equity (${equity:,.2f}) hit Limit (${hard_limit:,.2f} | {hard_limit_pct}%). Safety Cool-off: 24h")
-                    bot.send_message(f"💀 *HARD FUSE*: Límite diario alcanzado. Pausando por 24h.")
-                    mt5_manager.close_all_positions()
-                    time.sleep(sleep_duration)
-                    continue
-            else:
-                # Still log the status for monitoring
-                logger.info(f"🛡️ [AXI EXTREME] Hard Fuse bypassed for Survival Account. Equity: ${equity:,.2f}")
+                pass
 
-            # 3. Harvest Mode (Pase de Cuenta)
-            # ONLY FOR FTMO CHALLENGES: Disable for survival accounts < $100
+            # 3. Harvest Mode (Pase de Cuenta) - DISABLED FOR PURITY
+            # ONLY FOR FTMO CHALLENGES: Disabled to allow individual TP/SL hits
             if INITIAL_CAPITAL >= 100 and (equity >= INITIAL_CAPITAL * 1.10):
-                FTMO_TARGET = INITIAL_CAPITAL * 1.10
-                peak_post = max(getattr(bot, 'peak_equity_post_target', equity), equity)
-                bot.peak_equity_post_target = peak_post
-                extra = peak_post - FTMO_TARGET
-                harvest_threshold = FTMO_TARGET + (extra * 0.50)
-                if equity < harvest_threshold:
-                    logger.warning(f"🚜 [HARVEST] Cosechando Pase de Cuenta en ${equity:,.2f}.")
-                    bot.send_message(f"🚜 *CONTRATO CUMPLIDO*: Protegiendo el pase de cuenta. Cosechando resultados.")
-                    mt5_manager.close_all_positions()
-                    time.sleep(3600 * 24)
-                    continue
+                pass
             logger.debug("--- [STEP 2] Pulse Checked ---")
 
             # --- PHASE 75: IRON SHIELD v2 (Active Guardian) ---
@@ -2969,61 +2696,18 @@ def main():
                         BASKET_CFG.update(json.load(f))
                 except: pass
 
-                # A. LÓGICA DE TRAILING BASKET (Arrastre de Ganancias)
+                # A. LÓGICA DE TRAILING BASKET (Arrastre de Ganancias) - DISABLED FOR PURITY
                 global CURRENT_BASKET_PEAK
                 if len(active_positions) > 0:
-                    if account_info.equity > CURRENT_BASKET_PEAK:
-                        CURRENT_BASKET_PEAK = account_info.equity
-                    
-                    if floating_pct >= BASKET_CFG["trailing_activation_pct"]:
-                        trailing_floor_pct = (CURRENT_BASKET_PEAK - account_info.balance) / account_info.balance * 100.0 - BASKET_CFG["trailing_distance_pct"]
-                        
-                        if floating_pct < trailing_floor_pct:
-                            logger.info(f"🎯 [TRAILING BASKET] Profit secured at {floating_pct:.2f}% (Peak: {((CURRENT_BASKET_PEAK-account_info.balance)/account_info.balance*100.0):.2f}%).")
-                            mt5_manager.close_all_positions_atomic()
-                            CURRENT_BASKET_PEAK = 0.0
-                            try:
-                                from src.nanobot.utils.notificador import TelegramBot
-                                tg = TelegramBot()
-                                if tg.enabled: tg.send_message(f"🎯 *TRAILING BASKET*: Ganancia asegurada en `{floating_pct:.2f}%`. Cierre por retroceso.")
-                            except: pass
+                    pass # Basket tracking disabled to allow purely individual TP/SL hits
                 else:
                     CURRENT_BASKET_PEAK = account_info.equity
 
-                # B. LÓGICA DE SUELO SEMANAL (Weekly Glass Floor)
-                weekly_start = persistence_handler.state.get("weekly_start_balance", account_info.balance)
-                weekly_peak = persistence_handler.state.get("weekly_equity_peak", account_info.equity)
-                weekly_gain_pct = (account_info.equity - weekly_start) / weekly_start * 100.0 if weekly_start > 0 else 0
-                weekly_peak_gain_pct = (weekly_peak - weekly_start) / weekly_start * 100.0 if weekly_start > 0 else 0
+                # B. LÓGICA DE SUELO SEMANAL (Weekly Glass Floor) - DISABLED FOR PURITY
+                # Weekly floor removed to prevent interrupting trades mid-flight
 
-                if weekly_peak_gain_pct >= BASKET_CFG["weekly_target_pct"]:
-                    if not persistence_handler.state.get("weekly_floor_active", False):
-                        persistence_handler.state["weekly_floor_active"] = True
-                        persistence_handler.save()
-                        logger.info(f"💎 [WEEKLY FLOOR] Objetivo de {BASKET_CFG['weekly_target_pct']}% alcanzado. Suelo activado.")
-
-                if persistence_handler.state.get("weekly_floor_active", False):
-                    if weekly_gain_pct <= BASKET_CFG["weekly_floor_lock_pct"]:
-                        logger.warning(f"🛡️ [WEEKLY FLOOR VIOLATED] Profit drop to {weekly_gain_pct:.2f}%. Securing weekly green!")
-                        mt5_manager.close_all_positions_atomic()
-                        circuit_breaker_cooldown = time.time() + (86400 * 3) 
-                        try:
-                            from src.nanobot.utils.notificador import TelegramBot
-                            tg = TelegramBot()
-                            if tg.enabled: tg.send_message(f"🛡️ *WEEKLY FLOOR*: Ganancia semanal de `{weekly_gain_pct:.2f}%` ASEGURADA. Bot en reposo.")
-                        except: pass
-
-                # C. Recovery Lock
-                if daily_pnl_closed < -200 and account_info.equity > (daily_start_balance + 50):
-                    logger.warning(f"🛡️ [RECOVERY LOCK] Drawdown recovered. Resetting basket.")
-                    mt5_manager.close_all_positions_atomic()
-                    CURRENT_BASKET_PEAK = 0.0
-                    try:
-                        from src.nanobot.utils.notificador import TelegramBot
-                        tg = TelegramBot()
-                        if tg.enabled: tg.send_message(f"🛡️ *RECOVERY LOCK*: Recuperación completada. Bolsa liquidada.")
-                    except: pass
-
+                # C. Recovery Lock - DISABLED FOR PURITY
+                # Recovery lock removed to allow statistical mapping of all levels
 
             # 4. Control de Cooldown Activo
             if time.time() < circuit_breaker_cooldown:
@@ -3043,7 +2727,23 @@ def main():
                 time.sleep(5)
                 continue
 
-
+            # --- [RISK TRIBUNAL CYCLE RESET] ---
+            if risk_tribunal:
+                risk_tribunal.reset_cycle()
+                # 1. Lectura del entorno
+                active_positions = mt5_client.positions_get()
+                if active_positions is None: active_positions = ()
+                account_info = mt5_client.account_info()
+                
+                # Obtener el diccionario ATR para el Blindaje Némesis
+                fallback_atr_dict = vol_engine.get_all_atrs() if vol_engine else {}
+                
+                # 2. Cálculo Forense de Riesgo Inicial
+                base_global_risk = risk_tribunal.calculate_floating_risk(active_positions, account_info, fallback_atr_dict)
+                available_cap = risk_tribunal.GLOBAL_CAP - base_global_risk
+            else:
+                available_cap = 0.025 # Fallback
+            
             # --- [ALPHA SUPREMO PIPELINE V4.6.0] ---
             # 1. Cargar Configuración de Combate (ANTES de cualquier operación MT5)
             # La lectura de disco ocurre AQUÍ, lejos del Puente Silicon.
@@ -3108,8 +2808,74 @@ def main():
                 if mega_grid_tracker is None: mega_grid_tracker = MegaGridTracker(mt5_client, logger)
                 for signal in signal_pool:
                     if signal.symbol not in unique_symbols:
-                        mega_grid_tracker.execute_signal(signal)
+                        # --- [TRIBUNAL DE JUSTICIA CAPITAL] ---
+                        # Cargar el Alpha Heat Map (affinity_map)
+                        try:
+                            with open(AFFINITY_MAP_PATH, "r") as f:
+                                affinity_data = json.load(f)
+                            symbol_data = affinity_data.get(signal.symbol, {})
+                        except:
+                            symbol_data = {}
+                        
+                        # Obtener datos de entorno para el Tribunal V9.0
+                        now = datetime.now()
+                        curr_hour = now.hour
+                        
+                        # Spread y ATR
+                        tick = mt5_client.symbol_info_tick(signal.symbol)
+                        sym_inf = mt5_client.symbol_info(signal.symbol)
+                        current_spread = (tick.ask - tick.bid) / sym_inf.point if tick and sym_inf else None
+                        atr_pips = vol_engine.get_symbol_atr_pips(signal.symbol) if vol_engine else None
+
+                        # Pasar por el Tribunal
+                        final_risk_pct = risk_tribunal.get_meritocratic_risk(
+                            symbol=signal.symbol,
+                            symbol_data=symbol_data,
+                            base_risk=RISK_PER_TRADE, 
+                            available_cap=available_cap,
+                            current_hour=curr_hour,
+                            current_spread_pips=current_spread,
+                            symbol_atr_pips=atr_pips,
+                            stasis=is_stasis
+                        )
+                        
+                        # Freno de mano final
+                        if final_risk_pct < 0.0005: # < 0.05%
+                            logger.warning(f"🚫 [RISK TRIBUNAL] {signal.symbol} rejected: Insufficient risk budget or merit.")
+                            continue
+
+                        # --- [v10.0.0] OMEGA CORE: DISTRIBUCIÓN ASIMÉTRICA DEL 1% ---
+                        # Consultamos el VitalityOracle para saber qué nivel merece capital real
+                        try:
+                            acc_for_omega = mt5_client.account_info()
+                            equity_for_omega = float(acc_for_omega.equity) if acc_for_omega else current_capital
+                            # Determinar el rol activo del símbolo
+                            _omega_role = "NEM2" if "Antith" in symbol_data.get("reco", "") else "NEM1"
+                            omega_allocation = risk_tribunal.get_omega_core_allocation(
+                                symbol=signal.symbol,
+                                role=_omega_role,
+                                account_equity=equity_for_omega,
+                                max_risk_pct=0.01  # 1% global
+                            )
+                            # Inyectar la distribución en la señal para que execute_signal la use
+                            signal._omega_level_risks = omega_allocation["level_risks"]
+                            signal._omega_health      = omega_allocation["health"]
+                            signal._omega_scout_only  = omega_allocation["scout_only"]
+
+                            # Si el sistema está en COMA, bloquear (además del Tribunal individual)
+                            if omega_allocation["scout_only"] and not is_stasis:
+                                logger.warning(f"🧬 [OMEGA CORE] {signal.symbol}: Sistema en modo Biopsia. Desplegando Grid Mínimo (0.01) para mapeo estadístico.")
+                                # signal.force_scout = True # DISABLED: Allow 7 levels for statistical purity
+                        except Exception as e_omega:
+                            logger.warning(f"⚠️ [OMEGA CORE] Fallo en diagnóstico, usando distribución legacy: {e_omega}")
+                            signal._omega_level_risks = None
+
+                        # Ejecutar señal pasándole el riesgo ajustado
+                        mega_grid_tracker.execute_signal(signal, risk_pct=final_risk_pct)
                         unique_symbols.add(signal.symbol)
+                        
+                        # Comprometer en la memoria de tránsito
+                        risk_tribunal.commit_risk(final_risk_pct)
 
             # --- UPDATE LHN REAL GRID (Check tickets) ---
             if MT5_CONNECTED:
